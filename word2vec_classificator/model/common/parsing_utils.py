@@ -1,7 +1,6 @@
 import pandas as pd
-import numpy as np
 
-from word2vec_classificator.model.document import Document
+# from model.document import Document
 
 
 # split tokenized text into all_sentences
@@ -47,17 +46,17 @@ def select_training_content(df, make_document_mapping=False):
 
 
 # not currently used
-def csv_to_document(doc_df, category=None):
-    # doc_df = pd.read_csv(csv_content, header=attributes_format)
-    content = select_training_content(doc_df)
-
-    # TODO: this might be extended with other metadata carried over the classification
-    doc_metadata = {"doc_title": doc_df["sys_title"],
-                    "doc_category": category}
-
-    document = Document(plain_text=content, attributes=doc_metadata)
-
-    return document
+# def csv_to_document(doc_df, category=None):
+#     # doc_df = pd.read_csv(csv_content, header=attributes_format)
+#     content = select_training_content(doc_df)
+#
+#     # TODO: this might be extended with other metadata carried over the classification
+#     doc_metadata = {"doc_title": doc_df["sys_title"],
+#                     "doc_category": category}
+#
+#     document = Document(plain_text=content, attributes=doc_metadata)
+#
+#     return document
 
 
 def content_to_sentence_split(doc_content_plaintext):

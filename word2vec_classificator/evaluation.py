@@ -24,6 +24,8 @@ classifier = W2VClassifier(content_basepath="../data/content/", basepath_suffix=
 cat_samples_limit = 5000
 content_df = pd.DataFrame(columns=["content", "y", "doc_id"])
 
+k_fold_splits = 10
+
 # content aggregation into data frame
 for sample_cat in classifier.content_categories:
 
@@ -44,7 +46,7 @@ for sample_cat in classifier.content_categories:
 logging.info("Loaded %s sentences of %s categories" % (len(content_df), len(classifier.content_categories)))
 
 # categories' contents size balancing in train/test split is left for stratified k-fold algorithm
-strat_kfold = StratifiedKFold(n_splits=20, shuffle=True)
+strat_kfold = StratifiedKFold(n_splits=k_fold_splits, shuffle=True)
 accuracies = []
 cat_accuracies = pd.DataFrame(columns=classifier.content_categories)
 
@@ -98,8 +100,8 @@ for train_doc_indices, test_doc_indices in strat_kfold.split(xy_split["doc_id"],
     cat_accuracies = cat_accuracies.append(pd.DataFrame(data=[new_accuracies], columns=classifier.content_categories))
 
 # sample_sentences = all_sentences.ix[15]
-print "done"
 print "%s splits accuracies: %s" % (len(accuracies), accuracies)
 print "mean accuracy: %s" % np.array(accuracies).mean()
 print "mean accuracies for groups:"
 print cat_accuracies.mean()
+print "done"

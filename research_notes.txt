@@ -1,0 +1,13 @@
+6.2.17:
+- The categories sizes' balancing has been proved to improve the performance of the classifier by ~5-10%.
+This is most likely the unwanted behavior hopefully to be eliminated by an increase of the train/test dataset expecially for the little content categories.
+
+8.2.17:
+- The best results are unexpectedly reached on "webserver" project dataset having only 1041 documents in database. Might be caused by that the contents of this category have by the most part filled the "sys_content_plaintext" attribute containing free meaningful pieces of text (not proved hypothesis)
+Partial mean accuracy on CV (20 stratified splits) for webserver group reaches 88.36%
+- The biggest group model of eap train/tested on 5000 document (limited for groups size balancing) gives appx. average accuracy: 25.8%
+- Overall mean accuracy on CV (20 stratified splits): 28.59%
+
+- TODO: include unlabeled data from StackOverflow
+- that will need to be gathered by Searchisko REST and categorized by tags, since the content has no sys_project assigned
+- TODO: potentially try training on un-stemmed data set

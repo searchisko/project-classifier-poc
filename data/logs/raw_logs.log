@@ -1,0 +1,33 @@
+Split accuracy: 0.175764614789
+Split mean accuracies for groups:
+['eap', 'fuse', 'devstudio', 'webserver']
+[0.1707731520815633, 0.23469387755102042, 0.11670235546038545, 0.02830188679245283]
+done
+
+after filtering short sentences (<=5) and documents (<=3)
+
+Split accuracy: 0.178534031414
+Split mean accuracies for groups:
+['eap', 'fuse', 'devstudio', 'webserver']
+[0.27116402116402116, 0.14393939393939395, 0.06134969325153374, 0.05555555555555555]
+
+after filtering short docs (<3) (all SO content for all categories)
+Split accuracy: 0.869208601197
+Split mean accuracies for groups:
+['eap', 'fuse', 'devstudio']
+[0.9379775280898877, 0.7568653717347622, 0.8877679697351829]
+done
+
+before filtering short docs (<3):
+Split accuracy: 0.877677648102
+Split mean accuracies for groups:
+['eap', 'fuse', 'devstudio']
+[0.974088291746641, 0.6824729891956782, 0.7957219251336899]
+done
+
+SO with filtering short sentences:
+Split accuracy: 0.874661246612
+Split mean accuracies for groups:
+['eap', 'fuse', 'devstudio']
+[0.9514606741573034, 0.7498228206945429, 0.8813131313131313]
+done

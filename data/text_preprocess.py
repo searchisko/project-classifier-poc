@@ -6,7 +6,7 @@
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
 
 from gensim.summarization.syntactic_unit import SyntacticUnit
-from gensim.parsing.preprocessing import preprocess_documents
+import gensim.parsing.preprocessing as gensim_preprocessing
 from gensim.utils import tokenize
 from six.moves import xrange
 import re
@@ -79,11 +79,16 @@ def join_words(words, separator=" "):
     return separator.join(words)
 
 
-def clean_text_by_sentences(text):
+def clean_text_by_sentences(text, stemming):
     """ Tokenizes a given text into all_sentences, applying filters and lemmatizing them.
     Returns a SyntacticUnit list. """
     original_sentences = split_sentences(text)
-    filtered_sentences = [join_words(sentence) for sentence in preprocess_documents(original_sentences)]
+    if stemming:
+        filtered_sentences = [join_words(sentence) for sentence in gensim_preprocessing.preprocess_documents(original_sentences)]
+    else:
+        nostem_filters = [f for f in gensim_preprocessing.DEFAULT_FILTERS if f != gensim_preprocessing.stem_text]
+        filtered_sentences = [join_words(sentence) for sentence in gensim_preprocessing.preprocess_documents(original_sentences,
+            filters=nostem_filters)]
 
     return merge_syntactic_units(original_sentences, filtered_sentences)
 
@@ -93,7 +98,7 @@ def clean_text_by_word(text):
     Returns a dict of word -> syntacticUnit. """
     text_without_acronyms = replace_with_separator(text, "", [AB_ACRONYM_LETTERS])
     original_words = list(tokenize(text_without_acronyms, to_lower=True, deacc=True))
-    filtered_words = [join_words(word_list, "") for word_list in preprocess_documents(original_words)]
+    filtered_words = [join_words(word_list, "") for word_list in gensim_preprocessing.preprocess_documents(original_words)]
     if HAS_PATTERN:
         tags = tag(join_words(original_words))  # tag needs the context of the words in the text
     else:
@@ -107,8 +112,8 @@ def tokenize_by_word(text):
     return tokenize(text_without_acronyms, to_lower=True, deacc=True)
 
 
-def preprocess_text(text):
-    syntactic_units = clean_text_by_sentences(text)
+def preprocess_text(text, stemming=True):
+    syntactic_units = clean_text_by_sentences(text, stemming)
 
     tokenized_text = ""
     if len(syntactic_units) > 1:

@@ -1,11 +1,11 @@
 import json
-import requests
-import sys
 from text_preprocess import preprocess_text
-import math
+import requests
 
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+APPEND = False
 
 url = 'http://dcp2.jboss.org/v2/rest/search'
 response_size = 50
@@ -14,13 +14,14 @@ data = []
 offset = 0
 sample = 100000
 
-project_name = "fsw"
-out_file = "content/%s_content.csv" % project_name
+project_name = "eap"
+out_file = "content/playground/%s_nostem.csv" % project_name
 
 sep = ","
 
-gathered_attributes = ["sys_title", "sys_description", "source", "sys_content_plaintext"]
+gathered_attributes = ["sys_title", "sys_description", "sys_content_plaintext", "source"]
 target_attribute = project_name
+
 
 # http://stackoverflow.com/questions/20078816/replace-non-ascii-characters-with-a-single-space
 def replace_non_ascii(str):
@@ -40,7 +41,7 @@ def json_to_csv(json_obj):
                 if att == "source":
                     line += '"%s"%s' % (e_source[att], sep)
                 else:
-                    processed_text_unit = preprocess_text(e_source[att])
+                    processed_text_unit = preprocess_text(e_source[att], stemming=False)
                     processed_text = replace_non_ascii(processed_text_unit)
                     line += '"%s"%s' % (processed_text, sep)
             else:
@@ -51,10 +52,12 @@ def json_to_csv(json_obj):
     return out_csv
 
 header_fields = gathered_attributes + ["target"]
+file_handle_type = "a+" if APPEND else "w"
 download_counter = 0
-with open(out_file, "a+") as out_file:
-    # aggregate header to a single string and write it to the output file
-    out_file.write("%s\n" % reduce(lambda current, update: "%s%s%s" % (current, sep, update), header_fields))
+with open(out_file, file_handle_type) as out_file:
+    if not APPEND:
+        # aggregate header to a single string and write it to the output file
+        out_file.write("%s\n" % reduce(lambda current, update: "%s%s%s" % (current, sep, update), header_fields))
 
     while increase >= response_size and offset < sample:
         params = {

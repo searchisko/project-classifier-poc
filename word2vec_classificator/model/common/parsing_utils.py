@@ -40,7 +40,7 @@ def select_training_content(df, make_document_mapping=False):
     # TODO: performance bottleneck supposedly here
     sentence_container = pd.Series(map(lambda sentence: token_split(sentence), sentence_container))
     if make_document_mapping:
-        return sentence_container, document_mapping
+        return sentence_container, pd.Series(document_mapping)
     else:
         return sentence_container
 

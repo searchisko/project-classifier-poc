@@ -11,20 +11,16 @@ from sklearn.metrics import accuracy_score
 from model.classifier import W2VClassifier
 from model.common import parsing_utils as parsing
 
-from copy import deepcopy
-
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-label_content_mapping = {"portal": "../data/content/portal_content.csv"}
-
 # initialize classifier providing as well metadata about the models state
-classifier = W2VClassifier(content_basepath="../data/content/", basepath_suffix="_content.csv")
+classifier = W2VClassifier(content_basepath="../data/content/playground/", basepath_suffix="_content.csv")
 
 # TODO: consider category samples for performance tweak -
-cat_samples_limit = 5000
+cat_samples_limit = 50000
 content_df = pd.DataFrame(columns=["content", "y", "doc_id"])
 
-k_fold_splits = 10
+k_fold_splits = 5
 
 # content aggregation into data frame
 for sample_cat in classifier.content_categories:

@@ -1,0 +1,47 @@
+**Classification on Word2Vec**
+
+6.2.17:
+- The categories sizes' balancing has been proved to improve the performance of the classifier by ~5-10% (on small content categories)
+This is most likely the unwanted behavior hopefully to be eliminated by an increase of the train/test dataset expecially for the little content categories.
+
+8.2.17:
+- The best results are unexpectedly reached on "webserver" project dataset having only 1041 documents in database. Might be caused by that the contents of this category have by the most part filled the "sys_content_plaintext" attribute containing free meaningful pieces of text (not proved hypothesis)
+Partial mean accuracy on CV (20 stratified splits) for webserver group reaches 88.36%
+- The biggest group model of eap train/tested on 5000 document (limited for groups size balancing) gives appx. average accuracy: 25.8%
+- Overall mean accuracy on CV (20 stratified splits): 28.59%
+
+Classifier over categories' probabilities:
+16.2.17:
+- The classification atop the scoring vectors for documents seem to sometimes (however very variably) increase the accuracies.
+- The improvement seems to have a good effect
+-- We have tried Stochastic Gradient Descent classifiers and Random Forrest Classifier, of which none has resulted in any enlightening performance boost.
+-- The use of adjacent layer of classifiers seems to have a positive effect on performance stability - adding another group of content
+to classification does not significantly destroy the performance on former categories content
+- With more relevant (=bigger) categories, the Random Forrest Classifier in average increases accuracy marginally,
+SGD dramatically decreases (-25% with eap-fuse-devstudio) accuracy
+- this path will no longer be developed
+
+Standard classification (picking the most probable category for each doc):
+- The classification seems to perform usable well on categories with most content (eap:20k, fuse:8k, devstudio:5k).
+Performance accuracy of eap-fuse-devstudio (stemming, incl. SO, limited eap) classification: 83.99%, eap-fuse: 90.31% (where accuracy on eap:98.94%, fuse:82.07%)
+- This result suggests the importance of future acquisition of more content especially for small-volumed categories
+
+StackOverflow content addition effect:
+TODO
+
+Stemming effect:
+9.2.17:
+- Comparing results on stemmed and un-stemmed dataset (content_categories = ["portal", "amq", "webserver", "fsw"], CV split = 5):
+- the best results are now seen for fsw project: mean accuracy of 81.44%, a big difference to webserver: mean of %03.67 (?)
+- overall accuracy: 20.34% un-stemmed, 20.92% stemmed
+15.2.
+- Stemming removal has suggested to have a little effect on classifier performance. When training on un-stemmed texts, the accuracy went down by ~1-2%.
+
+Limiting document size:
+16.2.
+- Limiting the train/test dataset to documents longer than 3 sentences has decreased the accuracy marginally
+(on eap-fuse-devstudio content set by 0.85%)
+- Limiting only sentence size has marginally decreased the accuracy as well (~ -0.3%)
+
+16.2.17:
+TODO: make a classifier on raw dimensions of document in initialized w2v/d2v space (avoids using score() somehow...)

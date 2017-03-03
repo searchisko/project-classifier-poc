@@ -7,8 +7,14 @@ Feel free to have a look at research_notes.txt and discuss the further direction
 
 Current results can be evaluated by:
 
-`cd word2vec_classificator/`
+`cd model/`
 
 `python evaluation.py`
+
+or 
+
+`cd model/`
+
+`python d2v_superior_classifier.py`
 
 The overall objectives of the project are outlined [here](https://issues.jboss.org/browse/RHDENG-1111).

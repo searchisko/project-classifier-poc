@@ -12,7 +12,7 @@ from model.kfold_classifier_emulator import KFoldClassifierEmulator
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-# initialize classifier providing as well metadata about the models state
+# initialize d2v_wrapper providing as well metadata about the models state
 classifier = W2VClassifier(content_basepath="../data/content/playground", basepath_suffix="_content.csv")
 # select the categories to train on and classify
 classifier.content_categories = ["eap", "fuse", "devstudio"]

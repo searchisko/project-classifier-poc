@@ -44,4 +44,23 @@ Limiting document size:
 - Limiting only sentence size has marginally decreased the accuracy as well (~ -0.3%)
 
 16.2.17:
-TODO: make a classifier on raw dimensions of document in initialized w2v/d2v space (avoids using score() somehow...)
+- w2v might vectorize only words (BoW approach?) it is not clear how to combine the raw attributes of the tokens in sentences and documents.
+- We have decided to move the classification on vectors straight on Doc2Vec as it seems more suitable for the task
+
+**Classification on Doc2Vec**
+
+24.2.17:
+- Began integration of Doc2Vec concept with our datasets, as inspired by
+https://github.com/RaRe-Technologies/gensim/blob/develop/docs/notebooks/doc2vec-IMDB.ipynb
+- doc2vec_wrapper should take care of a vectorization for an arbitrary document and adjacent classifier might serve for the classification of the document
+- possibly provide the scoring-among-categories output as a result of regression against categories' 1-vs-all style trained models
+
+3.3.17:
+Doc2Vec:
+- Doc2Vec has now provides the arbitrary-attribute representation of the documents
+- Text preprocessing is left as for the most optimal seen results of Word2Vec
+- Logistic Regression (using one-vs-rest, newton-cg solver) integrated into the pipeline as adjacent classifier on Doc2Vec
+- in config of Doc2Vec(dbow,d300,n5,mc5,t8) trained in 10 epochs with learning alpha=0.1
+gives accuracy of 92.8413% (3 most numerous categories: [eap, fuse, devstudio] - partial accuracies: [0.9634, 0.8923, 0.8261])
+- where baseline (most common category (==eap)) accuracy is 63.03%
+- decreasing inference params and increasing inference steps (default 3->10) has boosted the overall accuracy by ~1.5%

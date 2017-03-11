@@ -26,10 +26,10 @@ class D2VWrapper:
     all_content_tagged_docs = None
     docs_category_mapping = None
 
-    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None):
-        # TODO: try other described models and configs
+    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None, vector_length=300):
         # TODO: might as well try concatenation of multiple models
-        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=0, size=300, negative=5, hs=0, min_count=5,
+        #
+        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=0, size=vector_length, negative=12, hs=0, min_count=5,
                                                   workers=multiprocessing.cpu_count(), alpha=0.1)
 
         self.content_basepath = content_basepath

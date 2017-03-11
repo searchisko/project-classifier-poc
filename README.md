@@ -7,13 +7,13 @@ Feel free to have a look at research_notes.txt and discuss the further direction
 
 Current results can be evaluated by:
 
-`cd model/`
+`cd classifiers/model/`
 
 `python evaluation.py`
 
 or 
 
-`cd model/`
+`cd classifiers/model/`
 
 `python d2v_superior_classifier.py`
 

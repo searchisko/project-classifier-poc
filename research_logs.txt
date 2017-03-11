@@ -64,3 +64,13 @@ Doc2Vec:
 gives accuracy of 92.8413% (3 most numerous categories: [eap, fuse, devstudio] - partial accuracies: [0.9634, 0.8923, 0.8261])
 - where baseline (most common category (==eap)) accuracy is 63.03%
 - decreasing inference params and increasing inference steps (default 3->10) has boosted the overall accuracy by ~1.5%
+
+7.3.17:
+TODO: two-layered network as constructed in https://deeplearning4j.org/welldressed-recommendation-engine
+- 1. layer: input size, activ: relu
+- 2. layer: output categories size, activ: softmax
+
+NN on Doc2Vec:
+11.3.17:
+- no significant gain from increase of train steps from 2000 to 4000 (gain of 0.2%)
+- the optimal (so far) dropout on 0.05

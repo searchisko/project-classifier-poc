@@ -4,7 +4,7 @@
 # https://www.tensorflow.org/get_started/tflearn
 # http://scikit-learn.org/stable/modules/cross_validation.html
 
-# used for debugging  and POC - functional demonstration in same-named jupyter notebook
+# used for debugging and POC - functional demonstration in same-named jupyter notebook
 
 import numpy as np
 import pandas as pd

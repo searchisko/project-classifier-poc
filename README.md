@@ -26,6 +26,6 @@ Current results can be evaluated by:
 
 ⋅⋅⋅ b) using simple **two-layered Neural Network** built on Tensorflow (more in code)
 
-⋅⋅⋅ See [demo notebook](https://github.com/searchisko/project-classifier-poc/tree/master/classifiers/model/d2v_superior_classifier_neural_nb.ipynb)
+⋅⋅⋅ See [demo notebook](https://github.com/searchisko/project-classifier-poc/tree/master/classifiers/model/d2v_superior_classifier_neural_nb_evaled.ipynb)
 
 The overall objectives of the project are outlined [here](https://issues.jboss.org/browse/RHDENG-1111).

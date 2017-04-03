@@ -77,4 +77,4 @@ NN on Doc2Vec:
 - the optimal (so far) dropout on 0.05
 
 3.4.17:
-- TODO: evaluate the success rate of minor categories and resistance against small training content of LogGReg classifier
+- TODO: evaluate the success rate of minor categories and accuracy resistance to small training content of LogGReg classifier

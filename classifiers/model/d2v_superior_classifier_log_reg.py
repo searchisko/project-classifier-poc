@@ -11,22 +11,23 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
 
 from sklearn.metrics import accuracy_score
-
 from sklearn.model_selection import StratifiedKFold
 
 from doc2vec_wrapper import D2VWrapper
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-# initialize d2v_wrapper providing as well metadata about the models state
-d2v_wrapper = D2VWrapper(content_basepath="../../data/content/playground",
+TEST_MODE = True
+
+# initialize d2v_wrapper providing also metadata about the models state
+d2v_wrapper = D2VWrapper(content_basepath="../../data/content/playground/auto",
                          basepath_suffix="_content.csv",
-                         content_categories=["eap", "fuse", "devstudio"])
+                         content_categories=['amq', 'webserver', 'datagrid'])
 # select the categories to train on and classify
 
 
 d2v_wrapper.init_model_vocab()
-d2v_wrapper.train_model(shuffle=True)
+d2v_wrapper.train_model(shuffle=True, epochs=1 if TEST_MODE else 10)
 
 doc_vectors_labeled = d2v_wrapper.infer_content_vectors()
 doc_vectors = doc_vectors_labeled.iloc[:, :-1]
@@ -37,8 +38,11 @@ def accuracy_for_category(y_expected, y_actual, label):
     label_expected = y_expected[y_expected == label]
     intersect = y_expected[np.where(y_expected == y_actual)]
     label_intersect = intersect[intersect == label]
-
-    return float(len(label_intersect))/len(label_expected)
+    if len(label_expected) == 0:
+        logging.warn("Accuracy of %s category evaluated on 0 samples" % label)
+        return 1 if len(label_intersect) == 0 else 0
+    else:
+        return float(len(label_intersect)) / len(label_expected)
 
 # classifier training and eval:
 strat_kfold = StratifiedKFold(n_splits=3, shuffle=True)
@@ -47,8 +51,7 @@ cat_accuracies = pd.DataFrame(columns=d2v_wrapper.content_categories)
 
 for train_doc_indices, test_doc_indices in strat_kfold.split(doc_vectors, doc_labels):
     # training
-
-    log_reg_classifier = LogisticRegression(solver="newton-cg", multi_class='ovr')
+    log_reg_classifier = LogisticRegression(solver="newton-cg", multi_class='ovr', n_jobs=8)
     log_reg_classifier.fit(doc_vectors.iloc[train_doc_indices], doc_labels.iloc[train_doc_indices])
 
     # testing

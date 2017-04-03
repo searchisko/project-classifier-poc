@@ -60,6 +60,7 @@ Doc2Vec:
 - Doc2Vec has now provides the arbitrary-attribute representation of the documents
 - Text preprocessing is left as for the most optimal seen results of Word2Vec
 - Logistic Regression (using one-vs-rest, newton-cg solver) integrated into the pipeline as adjacent classifier on Doc2Vec
+- TODO: in analog try as well SVMs
 - in config of Doc2Vec(dbow,d300,n5,mc5,t8) trained in 10 epochs with learning alpha=0.1
 gives accuracy of 92.8413% (3 most numerous categories: [eap, fuse, devstudio] - partial accuracies: [0.9634, 0.8923, 0.8261])
 - where baseline (most common category (==eap)) accuracy is 63.03%
@@ -74,3 +75,6 @@ NN on Doc2Vec:
 11.3.17:
 - no significant gain from increase of train steps from 2000 to 4000 (gain of 0.2%)
 - the optimal (so far) dropout on 0.05
+
+3.4.17:
+- TODO: evaluate the success rate of minor categories and resistance against small training content of LogGReg classifier

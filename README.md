@@ -12,17 +12,17 @@ Feel free to have a look at research_notes.txt and give us a poke with any piece
 Current results can be evaluated by:
 1. Classification on **sentences scoring method** (provided by gensim) against standalone categories' **word2vec** models:
 
-    `cd classifiers/model/`
+    cd classifiers/model/
     
-    `python evaluation.py`
+    python evaluation.py
 
 2. Classification on documents vectors as trained by **doc2vec** approach
 
 ⋅⋅⋅ a) using Scikit-learn's **Logistic Regression**
 
-`cd classifiers/model/`
-
-`python d2v_superior_classifier.py`
+    cd classifiers/model/
+    
+    python d2v_superior_classifier.py
 
 ⋅⋅⋅ b) using simple **two-layered Neural Network** built on Tensorflow (more in code)
 

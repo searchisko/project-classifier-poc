@@ -1,5 +1,4 @@
 import pandas as pd
-from gensim.models import doc2vec
 
 from collections import namedtuple
 
@@ -91,3 +90,7 @@ def tagged_docs_from_content(content_series, labels):
     return content_df_with_index.apply(lambda row: CategorizedDocument(row["content"],
                                                                        [row["index"]],
                                                                        labels[row["index"]]), axis=1)
+
+
+def content_from_words(word_list):
+    return reduce(lambda x, y: "%s %s" % (x, y), word_list) + "."

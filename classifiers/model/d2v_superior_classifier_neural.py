@@ -20,14 +20,13 @@ from doc2vec_wrapper import D2VWrapper
 
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-logging.level
 
 TEST_MODE = True
 
 # initialize d2v_wrapper providing also metadata about the models state
-d2v_wrapper = D2VWrapper(content_basepath="../../data/content/playground",
+d2v_wrapper = D2VWrapper(content_basepath="../../data/content/playground/auto",
                          basepath_suffix="_content.csv",
-                         content_categories=["eap", "fuse", "devstudio"])
+                         content_categories=['amq', 'webserver', 'datagrid', 'fuse', 'brms', 'bpmsuite', 'devstudio', 'cdk', 'developertoolset', 'rhel', 'softwarecollections', 'mobileplatform', 'openshift'])
 # select the categories to train on and classify
 
 
@@ -39,12 +38,16 @@ doc_vectors = doc_vectors_labeled.iloc[:, :-1]
 doc_labels = doc_vectors_labeled.iloc[:, -1]
 
 
+# extended evaluation metric on selected category
 def accuracy_for_category(y_expected, y_actual, label):
     label_expected = y_expected[y_expected == label]
     intersect = y_expected[np.where(y_expected == y_actual)]
     label_intersect = intersect[intersect == label]
-
-    return float(len(label_intersect)) / len(label_expected)
+    if len(label_expected) == 0:
+        logging.warn("Accuracy of %s category evaluated on 0 samples" % label)
+        return 1 if len(label_intersect) == 0 else 0
+    else:
+        return float(len(label_intersect)) / len(label_expected)
 
 
 # tensorflow new version estimator support

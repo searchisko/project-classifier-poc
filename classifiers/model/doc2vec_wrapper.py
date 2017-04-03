@@ -55,6 +55,8 @@ class D2VWrapper:
         self.all_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens, self.docs_category_mapping)
 
         self.base_doc2vec_model.build_vocab(self.all_content_tagged_docs)
+        # after this step, vectors are already inferable - might be just a random init tho
+        # docs vectors should be retrieved first after the training
 
     def train_model(self, shuffle=True, epochs=10):
         if self.all_content_tagged_docs is None:
@@ -68,25 +70,21 @@ class D2VWrapper:
             else:
                 train_ordered_tagged_docs = self.all_content_tagged_docs
             # self.base_doc2vec_model.infer_vector(self.base_doc2vec_model.vocab.keys()[:50][0:10])
-            # vectors are inferable - might be just random init tho
 
             self.base_doc2vec_model.train(train_ordered_tagged_docs)
 
     def infer_content_vectors(self, category=None, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
-        # TODO: for testing purposes - remove
-        limit = self.all_content_tagged_docs.__len__()
         if category is None:
             doc_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
-                           for doc in self.all_content_tagged_docs[:limit]]
-            doc_categories = [doc.category_expected for doc in self.all_content_tagged_docs[:limit]]
+                           for doc in self.all_content_tagged_docs]
+            doc_categories = [doc.category_expected for doc in self.all_content_tagged_docs]
             docs_vectors_df = pd.DataFrame(data=doc_vectors)
             docs_vectors_df["y"] = doc_categories
 
-            # TODO: could try docs_vectors_df shuffling for a better performance of superior classifier
             return docs_vectors_df
         else:
             # TODO: implement if needed
-            # returns vectors of only particular category
+            # returns vectors of only a particular category
             return
 
     def get_content_as_dataframe(self, cat_label=None):
@@ -105,7 +103,5 @@ class D2VWrapper:
                                       na_filter=False)
             return cat_content
 
-    # the docs must have been seen on training
-    # the classification prediction is left on adjacent d2v_wrapper taking docs vectors as input
-    def get_tagged_docs_vectors(self, tagged_docs):
-        return [self.base_doc2vec_model.docvecs[doc.tags[0]] for doc in tagged_docs]
+    def content_from_words(self, index):
+        return parsing.content_from_words(self.all_content_tagged_docs.iloc[index])

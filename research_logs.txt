@@ -78,3 +78,6 @@ NN on Doc2Vec:
 
 3.4.17:
 - TODO: evaluate the success rate of minor categories and accuracy resistance to small training content of LogGReg classifier
+
+7.4.17:
+TODO: discuss https://api.access.redhat.com/rs/search?q=product%3Arhel&rows=50&start=9950&fq=language%3Aen&sort=id+asc not giving anything

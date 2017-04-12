@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from collections import namedtuple
 
@@ -86,11 +87,13 @@ def sentence_list_from_content(content_df):
 
 def tagged_docs_from_content(content_series, labels):
     content_df_with_index = pd.DataFrame(data=content_series, columns=["content"])
-    content_df_with_index["index"] = content_series.index.values
+    content_df_with_index["index"] = np.arange(len(content_series))
     return content_df_with_index.apply(lambda row: CategorizedDocument(row["content"],
                                                                        [row["index"]],
-                                                                       labels[row["index"]]), axis=1)
+                                                                       labels.iloc[row["index"]]), axis=1)
 
 
 def content_from_words(word_list):
+    if len(word_list) < 1:
+        return ""
     return reduce(lambda x, y: "%s %s" % (x, y), word_list) + "."

@@ -1,5 +1,5 @@
 # project-classifier-poc
-Proof of concept of usability of classification able to evaluate the relevance of an arbitrary content towards the given categories.
+Proof of concept of a system able to estimate the relevance of an arbitrary content towards the given categories.
 
 The selected approach should be able to categorize the unseen document by its content (and optionally other given attributes).
 In addition, it should also be able to provide the relevance scoring mechanism so that potentionally relevant content can be further included in search results for given categories.
@@ -25,5 +25,7 @@ Current results can be checked by:
 ⋅⋅⋅ b) using simple **two-layered Neural Network** built on Tensorflow (more in code)
 
 ⋅⋅⋅ See [demo notebook](https://github.com/searchisko/project-classifier-poc/tree/master/classifiers/model/d2v_superior_classifier_neural_nb_evaled.ipynb)
+
+Some other classifiers are tested in the same folder.
 
 The overall objectives of the project are outlined [here](https://issues.jboss.org/browse/RHDENG-1111).

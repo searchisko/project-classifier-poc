@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import pandas as pd
 from gensim.models import doc2vec
+import numpy as np
 
 import common.parsing_utils as parsing
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
@@ -20,9 +21,10 @@ class D2VWrapper:
     all_content_tagged_docs = None
     docs_category_mapping = None
     inferred_vectors = None
+    header_docs = None
 
     def __init__(self, content_categories=None, vector_length=300):
-        # TODO: might as well try concatenation of multiple models
+        # TODO: try different window size
         #
         self.base_doc2vec_model = doc2vec.Doc2Vec(dm=0, size=vector_length, negative=12, hs=0, min_count=5,
                                                   workers=multiprocessing.cpu_count(), alpha=0.1)
@@ -35,21 +37,22 @@ class D2VWrapper:
         # in the given directory (content_basepath)
         assert doc2vec.FAST_VERSION > -1, "this will be painfully slow otherwise"
 
-        all_content_df = self.get_content_as_dataframe(content_basepath, basepath_suffix).drop_duplicates()
+        all_content_df = parsing.get_content_as_dataframe(content_basepath, basepath_suffix, self.content_categories).drop_duplicates()
 
         # fills up the mapping of document ids (index) to its original categories
-        # enabling the reverse search of docs vectors for each category and subsequent classification
+        # enabling the reverse search of all_base_vocab_docs vectors for each category and subsequent classification
         self.docs_category_mapping = pd.Series(data=all_content_df["target"])
 
         # selects a text of the most relevant attributes filled for each item of dataframe
         # (in format title, desc, plaintext_content)
         all_content_sens, _ = parsing.select_training_content(all_content_df, make_document_mapping=True, sent_split=False)
+        all_content_headers = parsing.select_headers(all_content_df)
 
-        logging.info("Loaded %s docs from %s categories" % (len(all_content_sens), len(self.content_categories)))
+        logging.info("Loaded %s all_base_vocab_docs from %s categories" % (len(all_content_sens), len(self.content_categories)))
 
-        # filter short docs from training, if required
+        # filter short all_base_vocab_docs from training, if required
         if drop_short_docs:
-            logging.info("Filtering docs shorter than %s tokens from vocab sample" % drop_short_docs)
+            logging.info("Filtering all_base_vocab_docs shorter than %s tokens from vocab sample" % drop_short_docs)
 
             content_lens = all_content_sens.apply(lambda content: len(content))
             ok_indices = content_lens >= drop_short_docs
@@ -57,43 +60,58 @@ class D2VWrapper:
             all_content_sens = all_content_sens[ok_indices]
             self.docs_category_mapping = self.docs_category_mapping[ok_indices.values]
 
-            logging.info("%s docs included in vocab init" % self.docs_category_mapping.__len__())
+            logging.info("%s all_base_vocab_docs included in vocab init" % self.docs_category_mapping.__len__())
 
         # transform the training sentences into TaggedDocument list
-        self.all_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens, self.docs_category_mapping)
+        self.all_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens,
+                                                                        all_content_headers,
+                                                                        self.docs_category_mapping)
         self.all_content_tagged_docs = self.all_content_tagged_docs.reset_index(drop=True)
 
-        self.base_doc2vec_model.build_vocab(self.all_content_tagged_docs)
-        # after this step, vectors are already inferable - might be just a random init tho
-        # docs vectors should be retrieved first after the training
+        self.init_vocab_from_docs()
 
-    def train_model(self, trained_model_path=None, shuffle=True, epochs=10, save_model_path=None):
-        if trained_model_path is not None:
-            self.base_doc2vec_model = doc2vec.Doc2Vec.load(trained_model_path)
-            return
+    def init_vocab_from_docs(self, docs=None):
+        if docs is not None:
+            self.all_content_tagged_docs = docs
+
+        # derive training all_base_vocab_docs of header content and push it into model vocabulary
+        self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+
+        self.base_doc2vec_model.build_vocab(self.all_content_tagged_docs.append(self.header_docs))
+
+        # after this step, vectors are already inferable - though the docs vectors needs to be embedded in train_model()
+        # all_base_vocab_docs vectors should be retrieved first after the training
+
+    def train_model(self, shuffle=True, epochs=10):
+        # TODO: train on headers as well
 
         if self.all_content_tagged_docs is None:
-            self.init_model_vocab()
+            logging.error("D2V vocabulary not initialized. Training must follow the init_model_vocab()")
+            return
         for epoch in range(epochs):
             logging.info("Training D2V model %s" % self.base_doc2vec_model)
             logging.info("Epoch %s convergence descent alpha: %s" % (epoch, self.base_doc2vec_model.alpha))
+
+            # shuffle support
+            train_ordered_tagged_docs = deepcopy(self.all_content_tagged_docs.values)
+            train_ordered_headers = deepcopy(self.header_docs.values)
             if shuffle and epoch > 0:
                 # shuffling is time-consuming and is not necessary in the first epoch (current order not seen before)
-                train_ordered_tagged_docs = deepcopy(self.all_content_tagged_docs)
                 random.shuffle(train_ordered_tagged_docs)
+                random.shuffle(train_ordered_headers)
             else:
                 train_ordered_tagged_docs = self.all_content_tagged_docs
             # self.base_doc2vec_model.infer_vector(self.base_doc2vec_model.vocab.keys()[:50][0:10])
 
-            self.base_doc2vec_model.train(train_ordered_tagged_docs)
-
-        if save_model_path is not None:
-            self.base_doc2vec_model.save(save_model_path)
+            self.base_doc2vec_model.train(pd.Series(train_ordered_tagged_docs).append(pd.Series(train_ordered_headers)))
+            # self.base_doc2vec_model.train(train_ordered_headers)
 
     def persist_trained_wrapper(self, model_save_path):
+        # TODO: if persisting folder does not exist, create it
+
         logging.info("Serializing wrapper model to: %s" % model_save_path)
 
-        logging.info("Persisting docs objects")
+        logging.info("Persisting all_base_vocab_docs objects")
         with open(model_save_path+"doc_labeling.mod", "w") as pickle_file_writer:
             cPickle.dump(self.all_content_tagged_docs, pickle_file_writer)
 
@@ -107,36 +125,33 @@ class D2VWrapper:
     def load_persisted_wrapper(self, model_save_path):
         logging.info("Loading serialized wrapper model from: %s" % model_save_path)
 
-        logging.info("Loading docs objects")
+        logging.info("Loading all_base_vocab_docs objects")
         with open(model_save_path + "doc_labeling.mod", "r") as pickle_file_reader:
             self.all_content_tagged_docs = cPickle.load(pickle_file_reader)
 
-        logging.info("Loading docs vectors")
+        # header content parse from base all_base_vocab_docs objects
+        self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+
+        logging.info("Loading all_base_vocab_docs vectors")
         with open(model_save_path + "doc_vectors.mod", "r") as pickle_file_reader:
             self.inferred_vectors = cPickle.load(pickle_file_reader)
 
         logging.info("Loading trained Doc2Vec model")
         self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_path + "doc2vec.mod")
 
-    def infer_content_vectors(self, new_inference=False, category=None, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
-        # TODO: try other inference params
-
+    def infer_vocab_content_vectors(self, new_inference=False, category=None, infer_steps=10):
         if not new_inference:
             if self.inferred_vectors is not None:
-                logging.info("Returning already inferred doc vectors")
+                logging.info("Returning already inferred doc vectors of %s all_base_vocab_docs" % len(self.inferred_vectors))
                 return self.inferred_vectors
-        else:
-            logging.warn("Vector inference is being repeated now.")
 
         logging.info("Docs vector inference started")
         if category is None:
-            logging.info("Inferring vectors of %s documents" % len(self.all_content_tagged_docs))
+            # inference with default aprams config
+            # TODO: try other inference params on new inference
+            self.inferred_vectors = self.infer_content_vectors(self.all_content_tagged_docs, infer_steps=10)
 
-            doc_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
-                           for doc in self.all_content_tagged_docs]
-            doc_categories = [doc.category_expected for doc in self.all_content_tagged_docs]
-            self.inferred_vectors = pd.DataFrame(data=doc_vectors)
-            self.inferred_vectors["y"] = doc_categories
+            self.inferred_vectors["y"] = [doc.category_expected for doc in self.all_content_tagged_docs]
 
             return self.inferred_vectors
         else:
@@ -144,6 +159,7 @@ class D2VWrapper:
             # implement if needed
             return
 
+    # deprecated - use get_content_as_dataframe() in parsing_utils
     def get_content_as_dataframe(self, content_basepath, basepath_suffix, cat_label=None):
         if not cat_label:
             # retrieve all content of all known categories
@@ -166,8 +182,27 @@ class D2VWrapper:
         else:
             return parsing.content_from_words(self.all_content_tagged_docs.iloc[index].words)
 
+    # gets a pd.Series of CategorizedDocument-s with unfilled categories
+    # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
+    def infer_content_vectors(self, docs, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
+        # TODO: test this - inference might or might not need a build_vocab and/or train phase
+        # that might probably be tested on already classified data
+        header_docs = parsing.parse_header_docs(docs)
 
+        logging.info("Inferring vectors of %s documents" % len(docs))
+        content_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
+                           for doc in docs]
 
+        # header vectors inference
+        logging.info("Inferring vectors of %s headers" % len(header_docs))
+        header_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
+                          for doc in header_docs]
 
+        content_vectors_df = pd.DataFrame(content_vectors)
+        header_vectors_df = pd.DataFrame(header_vectors)
+        new_inferred_vectors = pd.concat([content_vectors_df, header_vectors_df], axis=1)
 
+        # rename vector columns incrementally - columns are required tu have unique id by NN classifier
+        new_inferred_vectors.columns = np.arange(len(new_inferred_vectors.columns))
 
+        return new_inferred_vectors

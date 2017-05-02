@@ -12,9 +12,7 @@ Feel free to have a look at research_notes.txt and give us a poke with any piece
 Current results can be checked by:
 1. Classification on **sentences scoring method** (provided by gensim) against standalone categories' **word2vec** models (currently not the best results):
 
-    cd classifiers/model/
-    
-    python evaluation.py
+⋅⋅⋅ See [demo notebook](https://github.com/searchisko/project-classifier-poc/tree/master/classifiers/model/w2v_classifier_demo.ipynb)
 
 2. Classification on documents vectors as trained by **doc2vec** approach:
 

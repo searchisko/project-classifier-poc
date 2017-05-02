@@ -23,7 +23,7 @@ class W2VWrapper:
     generic_vocab_model = None
     category_models = dict()
 
-    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None, vector_length=300):
+    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None, vector_length=300, training_algo="cbow"):
         self.content_basepath = content_basepath
         self.basepath_suffix = basepath_suffix
         if content_categories:
@@ -34,7 +34,7 @@ class W2VWrapper:
             iter=30,  # iter = sweeps of SGD through the data; more is better
             hs=1, negative=0,  # we only have scoring for the hierarchical softmax setup
             size=vector_length,
-            sg=0
+            sg=0 if training_algo == "cbow" else 1
         )
 
     def init_vocab_model(self, given_content_series=None, given_content_targets=None, drop_short_docs=None):

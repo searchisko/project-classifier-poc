@@ -10,8 +10,6 @@ class AccessDownloader:
     content_source_id = "api.access.redhat.com"
     url = 'https://api.access.redhat.com/rs/search'
 
-    document_kinds = ["Article", "Solution"]
-
     project_name = None
     stemming = True
 
@@ -41,11 +39,11 @@ class AccessDownloader:
 
         return reduce(lambda x, y: x + "%20or%20" + y, q_parts)
 
-    def json_to_csv(self, json_obj, content_type):
-        out_csv = ""
+    def json_to_csv(self, json_obj):
 
         for entry in iter(json_obj):
             line = ""
+            content_type = entry["documentKind"]
             for att in map(lambda header_item: self.content_specific_attributes[header_item], self.header):
                 if att in entry.keys():
                     if att == "body":
@@ -70,9 +68,8 @@ class AccessDownloader:
             # sample is to lower the retrieved documents if in test mode
 
         download_counter = 0
-        # for document_kind in self.document_kinds:
-        document_kind = "any"
-        logging.info("Searching for document type: %s" % document_kind)
+
+        logging.info("Retrieving document type: any")
         offset = 0
         increase = response_size
 
@@ -93,7 +90,7 @@ class AccessDownloader:
                                                                    new_data["response"]["numFound"],
                                                                    response_size))
 
-            for line in self.json_to_csv(new_data["response"]["docs"], document_kind):
+            for line in self.json_to_csv(new_data["response"]["docs"]):
                 yield line
 
             increase = new_data["response"]["docs"].__len__()

@@ -9,10 +9,10 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 downloader_instances = [AccessDownloader, SearchiskoDownloader, StackOverflowDownloader]
 
 # TODO remove - testing config
-product_list = ["softwarecollections", "mobileplatform", "openshift"]
+# product_list = ["softwarecollections", "mobileplatform", "openshift", "eap"]
 # downloader_instances = [SearchiskoDownloader]
 
-content_out_prefix = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/playground/auto/nostem/"
+content_out_prefix = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/playground/auto/stem/"
 content_files_pattern = "%s_content.csv"
 content_path = content_out_prefix + content_files_pattern
 
@@ -32,7 +32,7 @@ for category in product_list:
         for downloader_class in downloader_instances:
             logging.info("Using %s downloader" % downloader_class)
 
-            downloader = downloader_class(project=category, csv_sep=csv_sep, drop_stemming=False)
+            downloader = downloader_class(project=category, csv_sep=csv_sep, drop_stemming=True)
             # use .download_and_parse(sample=60) param to limit content for content format testing
             download_generator = downloader.download_and_parse()
             for line in download_generator:

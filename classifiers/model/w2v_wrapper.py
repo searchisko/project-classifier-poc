@@ -23,7 +23,7 @@ class W2VWrapper:
     generic_vocab_model = None
     category_models = dict()
 
-    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None, vector_length=300, training_algo="cbow"):
+    def __init__(self, content_basepath, basepath_suffix="_content.csv", content_categories=None, vector_length=500, training_algo="cbow"):
         self.content_basepath = content_basepath
         self.basepath_suffix = basepath_suffix
         if content_categories:

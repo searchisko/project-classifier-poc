@@ -26,4 +26,6 @@ Current results can be checked by:
 
 Some other classifiers are tested in the same folder.
 
-The overall objectives of the project are outlined [here](https://issues.jboss.org/browse/RHDENG-1111).
+The overall objectives of the project are outlined [here](https://issues.jboss.org/browse/RHDENG-1111)
+
+and on slides [here](https://github.com/searchisko/project-classifier-poc/tree/master/classifiers/info)

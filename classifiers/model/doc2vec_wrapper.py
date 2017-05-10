@@ -16,18 +16,16 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 class D2VWrapper:
     # content_categories might be set from outer scope
-    # TODO: might be inferred from provided training content
     content_categories = None
     all_content_tagged_docs = None
     docs_category_mapping = None
     inferred_vectors = None
     header_docs = None
 
-    def __init__(self, content_categories=None, vector_length=300):
-        # TODO: try different window size
-        #
-        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=0, size=vector_length, negative=12, hs=0, min_count=5,
-                                                  workers=multiprocessing.cpu_count(), alpha=0.1)
+    def __init__(self, content_categories=None, vector_length=300, window=8, train_algo="dbow"):
+        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=1 if train_algo == "dm" else 0, size=vector_length, negative=12,
+                                                  hs=0, min_count=5, workers=multiprocessing.cpu_count(),
+                                                  alpha=0.1, window=window)
 
         if content_categories:
             self.content_categories = content_categories
@@ -83,7 +81,7 @@ class D2VWrapper:
         # all_base_vocab_docs vectors should be retrieved first after the training
 
     def train_model(self, shuffle=True, epochs=10):
-        # TODO: train on headers as well
+        # now training on headers as well
 
         if self.all_content_tagged_docs is None:
             logging.error("D2V vocabulary not initialized. Training must follow the init_model_vocab()")
@@ -149,7 +147,7 @@ class D2VWrapper:
         if category is None:
             # inference with default aprams config
             # TODO: try other inference params on new inference
-            self.inferred_vectors = self.infer_content_vectors(self.all_content_tagged_docs, infer_steps=10)
+            self.inferred_vectors = self.infer_content_vectors(self.all_content_tagged_docs, infer_steps=infer_steps)
 
             self.inferred_vectors["y"] = [doc.category_expected for doc in self.all_content_tagged_docs]
 
@@ -159,33 +157,9 @@ class D2VWrapper:
             # implement if needed
             return
 
-    # deprecated - use get_content_as_dataframe() in parsing_utils
-    def get_content_as_dataframe(self, content_basepath, basepath_suffix, cat_label=None):
-        if not cat_label:
-            # retrieve all content of all known categories
-            all_content = pd.DataFrame(
-                columns="sys_title,sys_description,source,sys_content_plaintext,target".split(","))
-            for cat_label in self.content_categories:
-                new_content = pd.read_csv("%s/%s%s" % (content_basepath, cat_label, basepath_suffix),
-                                          na_filter=False, error_bad_lines=False)
-                all_content = all_content.append(new_content, ignore_index=True)
-            return all_content
-        else:
-            # retrieve only one cat_label content
-            cat_content = pd.read_csv("%s/%s%s" % (content_basepath, cat_label, basepath_suffix),
-                                      na_filter=False)
-            return cat_content
-
-    def get_doc_content(self, index, word_split=False):
-        if word_split:
-            return self.all_content_tagged_docs.iloc[index].words
-        else:
-            return parsing.content_from_words(self.all_content_tagged_docs.iloc[index].words)
-
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
     def infer_content_vectors(self, docs, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
-        # TODO: test this - inference might or might not need a build_vocab and/or train phase
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
@@ -206,3 +180,10 @@ class D2VWrapper:
         new_inferred_vectors.columns = np.arange(len(new_inferred_vectors.columns))
 
         return new_inferred_vectors
+
+    def get_doc_content(self, index, word_split=False):
+        if word_split:
+            return self.all_content_tagged_docs.iloc[index].words
+        else:
+            return parsing.content_from_words(self.all_content_tagged_docs.iloc[index].words)
+

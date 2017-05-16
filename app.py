@@ -4,7 +4,6 @@
 # http://scikit-learn.org/stable/modules/cross_validation.html
 
 import logging
-from copy import deepcopy
 import multiprocessing
 
 import numpy as np

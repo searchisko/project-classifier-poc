@@ -1,3 +1,4 @@
+import cPickle
 import logging
 import numpy as np
 from scipy.optimize import minimize_scalar
@@ -6,7 +7,8 @@ from sklearn.metrics import accuracy_score
 
 import pandas as pd
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+# TODO: set logging level
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.WARN)
 
 general_search_threshold = 0.5
 
@@ -90,9 +92,19 @@ def normalize_probs(cat_probs, original_cat_threshold):
     # relative ratios of spaces divided by a split of <0, 1> prob space by a value of doc prob
     # where space is determined by a distance of doc_i prob from original_cat_threshold
     target_threshold = general_search_threshold
-    # the figure projects points into <0, 1> only with symmetric target_threshold = general_search_threshold
+    logging.info("Normalizing probs from optimal threshold %s to %s" % (original_cat_threshold, target_threshold))
 
-    return target_threshold * (cat_probs - original_cat_threshold) + target_threshold
+    # the figure projects points into <0, 1> only with symmetric target_threshold = general_search_threshold
+    probs_below_trhd = cat_probs[cat_probs < original_cat_threshold]
+    probs_above_trhd = cat_probs[cat_probs >= original_cat_threshold]
+
+    probs_below_trhd_ratio = (original_cat_threshold - probs_below_trhd)/original_cat_threshold
+    probs_above_trhd_ratio = (probs_above_trhd - original_cat_threshold)/(1-original_cat_threshold)
+
+    probs_below_trhd_new = target_threshold - (probs_below_trhd_ratio * target_threshold)
+    probs_above_trhd_new = target_threshold + (probs_above_trhd_ratio * target_threshold)
+
+    return probs_below_trhd_new.append(probs_above_trhd_new)
 
 
 # D:2)
@@ -100,9 +112,9 @@ def normalize_probs(cat_probs, original_cat_threshold):
 # to distinguish non-relevant from relevant
 # sensitivity (=precision/recall ratio) of a search can be customized by parametrized f-score for category
 def normalize_cat_scores(y_expected, cat_scores, category, beta):
-    #
+    logging.info("Normalizing scores for category: %s" % category)
     opt_cat_threshold = maximize_f_score(y_expected, cat_scores, category, beta)
-    # moves the scores so that the threshold gets to general_search_threshold, and ideally all scores are scaled in <0, 1>
+    # moves the scores so that the threshold gets to general_search_threshd, and ideally all scores are scaled in <0, 1>
     norm_cat_scores = normalize_probs(cat_scores, opt_cat_threshold)
     return norm_cat_scores
 
@@ -127,17 +139,17 @@ def beta_for_categories_provider(y_expected):
     # params were set to log-approximate the interval for categories between sizes of <100, 20 000> content
 
     cats_sizes = y_expected.value_counts()
-    logging.info("Categories size: %s" % cats_sizes)
+    logging.info("Categories size: \n%s" % cats_sizes)
 
     # normalization function - linear function mapping interval <1000, 20000> (= category size) to <5, 0.2>:
-    scale_max = cats_sizes[1]
-    scale_min = cats_sizes.mean()
+    cats_order_by_size = pd.Series(data=cats_sizes.values.argsort(), index=cats_sizes.index)
 
     # TODO: betas for categories are not as nice as we might like - that might need some non-linear function
-    scaling_f = get_scaling_func(input_intvl=[3000, scale_max], target_intvl=[1, 0.5])
+    scaling_f = get_scaling_func(input_intvl=[cats_order_by_size.min(), cats_order_by_size.max()], target_intvl=[5, 0.2])
 
-    cats_betas = cats_sizes.apply(scaling_f)
-    logging.info("Categories f-score betas as scaled by cat sizes: %s" % cats_betas)
+    # lower betas weight more significantly precision, higher weight more recall
+    cats_betas = cats_order_by_size.apply(scaling_f)
+    logging.warn("Categories f-score betas as scaled by cat sizes: \n%s" % cats_betas)
 
     return cats_betas
 
@@ -149,7 +161,6 @@ def beta_for_categories_provider(y_expected):
 def normalize_all_cats_scores(y_expected, scores_df):
     norm_scores_df = pd.DataFrame()
     categories_betas = beta_for_categories_provider(y_expected)
-    # TODO: logging
     for cat_label in scores_df.keys().unique():
         norm_scores_df[cat_label] = normalize_cat_scores(y_expected, scores_df[cat_label],
                                                          cat_label, categories_betas[cat_label])
@@ -162,7 +173,7 @@ def weighted_combine_cats_predictions(expected_labels, cats_performance):
     scaling_f = get_scaling_func(input_intvl=[100, biggest_category], target_intvl=[1, 20])
 
     scaled_performance = cats_performance.apply(scaling_f)
-    logging.info("Cats performance weights: %s" % scaled_performance)
+    logging.warn("Cats performance weights: \n%s" % scaled_performance)
 
     combined_performance = scaled_performance.mean()
     return combined_performance
@@ -183,15 +194,23 @@ def evaluate(y_expected, scores_df):
 
     return combined_cat_performance
 
-# DEBUG part
-import cPickle
 
-pickle_file = "temp_pickled_scores_df.dump"
-with open(pickle_file, "r") as pickle_file_writer:
-    scores_df = cPickle.load(pickle_file_writer)
+# Test part
 
-pickle_file = "temp_pickled_y_expected.dump"
-with open(pickle_file, "r") as pickle_file_writer:
-    all_y_expected = cPickle.load(pickle_file_writer)
+def load_pickled_scores(scores_df_path, y_expected_path):
+    logging.info("Loading scores and y_expected from (%s, %s)" % (scores_df_path, y_expected_path))
+    with open(scores_df_path, "r") as pickle_file:
+        scores_df = cPickle.load(pickle_file)
+        scores_df.index = np.array(range(len(scores_df)))
 
-logging.info("Overall accuracy: %s" % evaluate(all_y_expected, scores_df))
+    with open(y_expected_path, "r") as pickle_file:
+        all_y_expected = cPickle.load(pickle_file)
+        all_y_expected.index = np.array(range(len(scores_df)))
+
+    return scores_df, all_y_expected
+
+# for TEST:
+
+# scores_df, y_expected = load_pickled_scores("temp_pickled_scores_df.dump", "temp_pickled_y_expected.dump")
+# performance = evaluate(y_expected, scores_df)
+# logging.warn("Overall performance: %s" % performance)

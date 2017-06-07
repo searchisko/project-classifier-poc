@@ -10,18 +10,18 @@ import numpy as np
 import pandas as pd
 import random
 
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import StratifiedKFold
+from sklearn.linear_model import LogisticRegression
 
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
-from sklearn.svm import LinearSVC
+from sklearn.metrics import accuracy_score
 
 from doc2vec_wrapper import D2VWrapper
+import scores_tuner
 
 import logging
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.WARN)
 
 TEST_MODE = False
 
@@ -41,11 +41,17 @@ d2v_wrapper = D2VWrapper(content_categories=content_categories,
 # d2v_wrapper.persist_trained_wrapper("trained_models/wrapper/")
 
 # OR load initialized and trained wrapper if available
-d2v_wrapper.load_persisted_wrapper("trained_models/wrapper/10epoch_train_stem")
+d2v_wrapper.load_persisted_wrapper("trained_models/wrapper/header_incl/10epoch_train_stem_not_removed_header_v400")
 
-doc_vectors_labeled = d2v_wrapper.infer_content_vectors()
+doc_vectors_labeled = d2v_wrapper.infer_vocab_content_vectors()
+
 doc_vectors = doc_vectors_labeled.iloc[:, :-1]
 doc_labels = doc_vectors_labeled.iloc[:, -1]
+
+# softwarecollections is too small for CV fold tuning, so we'll exclude it
+limit_prod_list = ["softwarecollections"]
+doc_vectors = doc_vectors[~doc_labels.isin(limit_prod_list)]
+doc_labels = doc_labels[~doc_labels.isin(limit_prod_list)]
 
 # TODO: content limited to given categories
 # limit the content to specific categories
@@ -96,17 +102,23 @@ def frange(x, y, jump):
         x += jump
     return out
 
-tuned_parameters = {'C': frange(0.1, 1, 0.02)}
+tuned_parameters = {'C': frange(0.2, 0.3, 0.01)}
 
-score = "accuracy"
-
-print("# Tuning hyper-parameters for %s" % score)
+print("# Tuning hyper-parameters for combined performance metric maximization")
 print()
 
-from sklearn.linear_model import LogisticRegression
 
-clf = GridSearchCV(LogisticRegression(solver="sag", multi_class='ovr', n_jobs=8, max_iter=1000), tuned_parameters, cv=3,
-                   scoring="accuracy", n_jobs=8)
+# evaluation wrapper for given estimator, to conform with sklearn's GridSearchCV interface
+class LogRegCustomScore(LogisticRegression):
+    def score(self, X, y, _=None):
+        predicted_probs_df = pd.DataFrame(data=self.predict_proba(X), columns=list(self.classes_), index=X.index)
+        reached_score = scores_tuner.evaluate(y, predicted_probs_df)
+        print("LogReg on C: %s performance: %s" % (self.C, reached_score))
+        return reached_score
+
+
+clf = GridSearchCV(LogRegCustomScore(solver="sag", multi_class='ovr', n_jobs=8, max_iter=1000),
+                   tuned_parameters, cv=5)
 clf.fit(X_train, y_train)
 
 print("Best parameters set found on development set:")

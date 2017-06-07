@@ -54,8 +54,10 @@ def get_eval_groups_for_category(y_expected, cat_scores, category, threshold):
 # expects non-indexed np arrays of expected and actual labels
 def precision_recall_for_category(y_expected, cat_scores, category, threshold):
     eval_groups = get_eval_groups_for_category(y_expected, cat_scores, category, threshold)
-    precision = float(eval_groups["TP"]) / (eval_groups["TP"] + eval_groups["FP"]) if eval_groups["TP"] + eval_groups["FP"] > 0 else 0
-    recall = float(eval_groups["TP"]) / (eval_groups["TP"] + eval_groups["FN"]) if eval_groups["TP"] + eval_groups["FN"] > 0 else 0
+    precision = float(eval_groups["TP"]) / (eval_groups["TP"] + eval_groups["FP"]) \
+        if eval_groups["TP"] + eval_groups["FP"] > 0 else 0
+    recall = float(eval_groups["TP"]) / (eval_groups["TP"] + eval_groups["FN"]) \
+        if eval_groups["TP"] + eval_groups["FN"] > 0 else 0
 
     logging.info("precision_recall_for_category returns: %s, %s" % (precision, recall))
 
@@ -102,7 +104,7 @@ def normalize_probs(cat_probs, original_cat_threshold):
     probs_above_trhd_ratio = (probs_above_trhd - original_cat_threshold)/(1-original_cat_threshold)
 
     probs_below_trhd_new = target_threshold - (probs_below_trhd_ratio * target_threshold)
-    probs_above_trhd_new = target_threshold + (probs_above_trhd_ratio * target_threshold)
+    probs_above_trhd_new = target_threshold + (probs_above_trhd_ratio * (1 - target_threshold))
 
     return probs_below_trhd_new.append(probs_above_trhd_new)
 
@@ -169,18 +171,20 @@ def normalize_all_cats_scores(y_expected, scores_df):
 
 # E:0) Infers linearly-scaled weights for each category by its size
 def weighted_combine_cats_predictions(expected_labels, cats_performance):
-    biggest_category = expected_labels.value_counts().max()
-    scaling_f = get_scaling_func(input_intvl=[100, biggest_category], target_intvl=[1, 20])
+    def scaling_f(cat_size):
+        return 1 / np.math.sqrt(cat_size)
 
-    scaled_performance = cats_performance.apply(scaling_f)
-    logging.warn("Cats performance weights: \n%s" % scaled_performance)
+    # categories must be weighted decreasingly by size
+    performance_scalars = expected_labels.value_counts().apply(scaling_f) * expected_labels.value_counts()
+    logging.warn("Cats performance weights: \n%s" % performance_scalars)
 
-    combined_performance = scaled_performance.mean()
+    combined_performance = np.average(cats_performance, weights=performance_scalars)
     return combined_performance
 
 
 # E:1) computes a performance from the scope of a search results
 # considering as relevant the documents above the fixed threshold (general_search_threshold)
+# NOTE: both y_expected and scores_df must have same length and matching index
 def evaluate(y_expected, scores_df):
     score_df_normalized = normalize_all_cats_scores(y_expected, scores_df)
     cat_fscore_betas = beta_for_categories_provider(y_expected)
@@ -190,6 +194,7 @@ def evaluate(y_expected, scores_df):
                                                                                cat_label,
                                                                                general_search_threshold,
                                                                                cat_fscore_betas[cat_label]))
+    cats_performance.index = cat_labels.values
     combined_cat_performance = weighted_combine_cats_predictions(y_expected, cats_performance)
 
     return combined_cat_performance
@@ -197,7 +202,7 @@ def evaluate(y_expected, scores_df):
 
 # Test part
 
-def load_pickled_scores(scores_df_path, y_expected_path):
+def debug_load_pickled_scores(scores_df_path, y_expected_path):
     logging.info("Loading scores and y_expected from (%s, %s)" % (scores_df_path, y_expected_path))
     with open(scores_df_path, "r") as pickle_file:
         scores_df = cPickle.load(pickle_file)

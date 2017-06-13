@@ -3,8 +3,6 @@ import logging
 import numpy as np
 from scipy.optimize import minimize_scalar
 
-from sklearn.metrics import accuracy_score
-
 import pandas as pd
 
 # TODO: set logging level
@@ -12,11 +10,12 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 general_search_threshold = 0.5
 
-"""Stateful provider of scaling functionality for scores of categories as inferred by classifiers"""
+"""
+Stateful provider of scaling service for scores of categories as inferred by classifiers
+"""
 
 
 class ScoreTuner:
-    # TODO: independently tune trhds and use 1. for tuning training scores 2. for tuning new content scores
     cats_original_thresholds = pd.Series()
     trained = False
 

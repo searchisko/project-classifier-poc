@@ -3,7 +3,7 @@ import numpy as np
 
 from collections import namedtuple
 
-from text_preprocess import preprocess_text
+from classifiers.model.service.dependencies.text_preprocess import preprocess_text
 
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)

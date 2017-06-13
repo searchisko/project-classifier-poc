@@ -79,12 +79,21 @@ class RelevanceSearchService:
 
         return docs_scores.sort_index()
 
+    """
+    Optimize the categories thresholds of score_tuner to maximize the combined categories' f-score
+    to be used for score tuning on a new content requested to be scored.
+    """
     def _train_score_tuner(self, doc_vectors, y, score_tuner):
         scores_df = self._score_train_content(doc_vectors, y)
         score_tuner.train_categories_thresholds(y, scores_df)
         logging.info("Score tuner trained")
         return score_tuner
 
+    """
+    Train all required system models on a content in a given train_content_dir folder.
+    The folder should contain categories' content in csv-formed files <category>_content.csv.
+    The files should hold the structure as produced by downloader_automata.py
+    """
     def train(self, train_content_dir):
         # init d2v_wrapper with categorized documents
         self.service_meta["model_train_start_timestamp"] = datetime.datetime.utcnow()
@@ -115,6 +124,9 @@ class RelevanceSearchService:
         self.service_meta["model_train_src_dir"] = train_content_dir
 
     def persist_trained_model(self, persist_dir=default_model_dir):
+        if self.service_meta["model_train_src_dir"] is None:
+            logging.error("Service models have not been trained yet. Run self.train(train_content_path) first")
+
         if not os.path.exists(persist_dir):
             os.makedirs(persist_dir)
         # use d2v_wrapper persistence and classifier persistence
@@ -139,6 +151,9 @@ class RelevanceSearchService:
     """load previously trained model from the persist_dir"""
 
     def load_trained_model(self, persist_dir=default_model_dir):
+        if self.service_meta["model_train_src_dir"] is not None:
+            logging.warn("Overriding the loaded model from %s" % self.service_meta["model_train_src_dir"])
+
         self.d2v_wrapper.load_persisted_wrapper(persist_dir)
         self.model_categories = self.d2v_wrapper.content_categories
 
@@ -170,22 +185,23 @@ class RelevanceSearchService:
     """
 
     def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
-        logging.info("Received docs %s for scoring" % list(doc_ids))
+        logging.info("Requested docs: %s for scoring" % list(doc_ids))
         # check integrity
         if type(doc_ids) is not pd.Series:
             doc_ids = pd.Series(doc_ids)
 
         if doc_ids.unique().__len__() < len(doc_ids):
-            raise ValueError("doc_ids parameter must contain unique values to specifically identify docs.")
+            raise ValueError("doc_ids parameter must contain unique values to further specifically identify docs.")
 
         if not all([self.d2v_wrapper, self.vector_classifier, self.score_tuner]):
-            # EITHER
-            # raise UserWarning(
-            #     "Some of the models is not properly loaded. First train the models using train(content_dir)"
-            #     "or load the pre-trained model using load_trained_model(persist_dir)")
-            # OR rather try to initialize the model from some default directory
-            # TODO: catch something if the directory with model does not exist
-            self.load_trained_model()
+            logging.warning("First service call. Will try to load model from self.default_model_dir")
+            try:
+                self.load_trained_model()
+            except IOError:
+                raise UserWarning(
+                        "Depended models not found in self.default_model_dir = %s."
+                        "Please train and export the model to the given directory "
+                        "so it can be loaded at first score request")
 
         # preprocess content
         logging.info("Docs %s: preprocessing" % list(doc_ids))
@@ -210,7 +226,9 @@ class RelevanceSearchService:
         return new_content_scores_tuned
 
     """
-    Evaluates performance of the deployed classifier in CV manner
+    Evaluates performance of the deployed classifier in CV manner.
+    The results are memorized in self.service_meta["model_eval_result"] after the test finishes
+    The test might take tens of minutes depending on a number of folds.
     """
 
     def evaluate_performance(self, folds=5, target_search_threshold=0.5):
@@ -256,5 +274,6 @@ class RelevanceSearchService:
         logging.info("Categories splits performance: \n%s" % cats_performance)
         logging.info("Categories mean performance: \n%s" % cats_performance.apply(np.mean, axis=0))
 
-        self.service_meta["model_eval_result"] = {"mean_performance": np.mean(performance),
+        self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow(),
+                                                  "mean_performance": np.mean(performance),
                                                   "categories_mean_performace": cats_performance.apply(np.mean, axis=0)}

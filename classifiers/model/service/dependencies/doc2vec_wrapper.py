@@ -13,7 +13,7 @@ import pandas as pd
 from gensim.models import doc2vec
 import numpy as np
 
-import common.parsing_utils as parsing
+import classifiers.model.service.dependencies.parsing_utils as parsing
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 

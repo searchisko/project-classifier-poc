@@ -1,5 +1,5 @@
-# TODO: resolve $PYTHONPATH - currently set, might not be the nicest way of resolving dependencies
-# export PYTHONPATH=/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service:/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service/dependencies
+# TODO: resolve $PYTHONPATH - might not be the nicest way of resolving dependencies
+# export PYTHONPATH=/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service
 
 import os
 

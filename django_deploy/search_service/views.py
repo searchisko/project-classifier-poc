@@ -12,8 +12,6 @@ import logging
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-# from .models import PageView
-
 # Create your views here.
 # models_dir = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service/persisted_model_e20"
 score_service_instance = RelevanceSearchService()
@@ -54,7 +52,7 @@ def score(request):
             doc_header = request.POST["doc_header"]
             doc_content = request.POST["doc_content"]
         except KeyError:
-            return HttpResponse("ERROR: the service requires GET params: doc_id, doc_headber and doc_content", status=400)
+            return HttpResponse("ERROR: the service requires GET params: doc_id, doc_header and doc_content", status=400)
 
         logging.info("POST: Scoring document %s: header len: %s, content len: %s"
                      % (doc_id, len(doc_header.split()), len(doc_content.split())))

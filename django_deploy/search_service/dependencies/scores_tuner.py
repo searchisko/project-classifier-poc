@@ -126,7 +126,7 @@ class ScoreTuner:
         # relative ratios of spaces divided by a split of <0, 1> prob space by a value of doc prob
         # where space is determined by a distance of doc_i prob from original_cat_threshold
         target_threshold = general_search_threshold
-        logging.info("Normalizing probs from optimal threshold %s to %s" % (original_cat_threshold, target_threshold))
+        logging.info("Normalizing probs %s by opt original threshold %s" % (cat_probs.values, original_cat_threshold))
 
         # the figure projects points into <0, 1> only with symmetric target_threshold = general_search_threshold
         probs_below_trhd = cat_probs[cat_probs < original_cat_threshold]

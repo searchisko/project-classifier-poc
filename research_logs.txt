@@ -85,3 +85,7 @@ WHATEVER: discuss https://api.access.redhat.com/rs/search?q=product%3Arhel&rows=
 DONE: try different window size - documented to work on 10
 DONE: include header as separate set of attributes for classification
 DONE: https://developers.redhat.com/resources/#!type=book <- classify
+
+13.6.17:
+Base of a service implemented - there are doubts about the betas of categories -
+TODO: consider tuning categories betas in CV manner with distinct dev dataset, observing some more meaningful threshold

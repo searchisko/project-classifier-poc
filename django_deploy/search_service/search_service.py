@@ -28,7 +28,7 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service/persisted_model_prod"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/persisted_model_prod"
     service_meta = dict()
 
     def __init__(self):
@@ -63,7 +63,7 @@ class RelevanceSearchService:
 
     def _score_train_content(self, doc_vectors, y):
         docs_scores = pd.DataFrame(columns=self.model_categories)
-        # TODO: splits
+        # TODO: set splits
         splits = 5
 
         strat_kfold = StratifiedKFold(n_splits=splits, shuffle=True)
@@ -106,8 +106,8 @@ class RelevanceSearchService:
         # categories are inferred by target directory containment in vocab init of d2v
         self.model_categories = self.d2v_wrapper.content_categories
         # train d2v model, infer docs vectors and train adjacent classifier
-        # TODO epochs
-        self.d2v_wrapper.train_model(epochs=3)
+        # TODO set epochs
+        self.d2v_wrapper.train_model(epochs=10)
 
         doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
         doc_vectors = doc_vectors_labeled.iloc[:, :-1]

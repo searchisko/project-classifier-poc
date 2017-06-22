@@ -5,12 +5,15 @@ import logging
 import multiprocessing
 import random
 from copy import deepcopy
+from os import listdir
+from os.path import isfile, join
 
+import numpy as np
 import pandas as pd
 from gensim.models import doc2vec
-import numpy as np
 
-import common.parsing_utils as parsing
+import classifiers.model.service.dependencies.parsing_utils as parsing
+
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 
@@ -30,7 +33,13 @@ class D2VWrapper:
         if content_categories:
             self.content_categories = content_categories
 
-    def init_model_vocab(self, content_basepath, basepath_suffix, drop_short_docs=False):
+    def init_model_vocab(self, content_basepath, basepath_suffix="_content.csv", drop_short_docs=False):
+        # infer the trained categories according to the files in directory
+        dir_files = [f for f in listdir(content_basepath) if isfile(join(content_basepath, f))]
+        self.content_categories = map(
+            lambda dir_file_path: dir_file_path.replace(content_basepath, "").replace(basepath_suffix, ""),
+            dir_files)
+
         # initializes the vocabulary by the given categories (content_categories)
         # in the given directory (content_basepath)
         assert doc2vec.FAST_VERSION > -1, "this will be painfully slow otherwise"
@@ -104,38 +113,41 @@ class D2VWrapper:
             self.base_doc2vec_model.train(pd.Series(train_ordered_tagged_docs).append(pd.Series(train_ordered_headers)))
             # self.base_doc2vec_model.train(train_ordered_headers)
 
-    def persist_trained_wrapper(self, model_save_path):
-        # TODO: if persisting folder does not exist, create it
+    def persist_trained_wrapper(self, model_save_dir, model_only=False):
+        # if persisting folder does not exist, create it - Service layer will take care of it
+        if not model_only:
+            logging.info("Serializing wrapper model to: %s" % model_save_dir)
 
-        logging.info("Serializing wrapper model to: %s" % model_save_path)
+            logging.info("Persisting all_base_vocab_docs objects")
+            with open(model_save_dir + "/doc_labeling.mod", "w") as pickle_file_writer:
+                cPickle.dump(self.all_content_tagged_docs, pickle_file_writer)
 
-        logging.info("Persisting all_base_vocab_docs objects")
-        with open(model_save_path+"doc_labeling.mod", "w") as pickle_file_writer:
-            cPickle.dump(self.all_content_tagged_docs, pickle_file_writer)
-
-        logging.info("Persisting inferred vectors")
-        with open(model_save_path+"doc_vectors.mod", "w") as pickle_file_writer:
-            cPickle.dump(self.inferred_vectors, pickle_file_writer)
+            logging.info("Persisting inferred vectors")
+            with open(model_save_dir + "/doc_vectors.mod", "w") as pickle_file_writer:
+                cPickle.dump(self.inferred_vectors, pickle_file_writer)
 
         logging.info("Persisting trained Doc2Vec model")
-        self.base_doc2vec_model.save(model_save_path + "doc2vec.mod")
+        self.base_doc2vec_model.save(model_save_dir + "/doc2vec.mod")
 
-    def load_persisted_wrapper(self, model_save_path):
-        logging.info("Loading serialized wrapper model from: %s" % model_save_path)
+    def load_persisted_wrapper(self, model_save_dir, model_only=False):
+        logging.info("Loading serialized wrapper model from: %s" % model_save_dir)
 
-        logging.info("Loading all_base_vocab_docs objects")
-        with open(model_save_path + "doc_labeling.mod", "r") as pickle_file_reader:
-            self.all_content_tagged_docs = cPickle.load(pickle_file_reader)
+        if not model_only:
+            logging.info("Loading all_base_vocab_docs objects")
+            with open(model_save_dir + "/doc_labeling.mod", "r") as pickle_file_reader:
+                self.all_content_tagged_docs = cPickle.load(pickle_file_reader)
 
-        # header content parse from base all_base_vocab_docs objects
-        self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+            self.content_categories = self.all_content_tagged_docs.apply(lambda doc: doc.category_expected).unique()
 
-        logging.info("Loading all_base_vocab_docs vectors")
-        with open(model_save_path + "doc_vectors.mod", "r") as pickle_file_reader:
-            self.inferred_vectors = cPickle.load(pickle_file_reader)
+            # header content parse from base all_base_vocab_docs objects
+            self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+
+            logging.info("Loading all_base_vocab_docs vectors")
+            with open(model_save_dir + "/doc_vectors.mod", "r") as pickle_file_reader:
+                self.inferred_vectors = cPickle.load(pickle_file_reader)
 
         logging.info("Loading trained Doc2Vec model")
-        self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_path + "doc2vec.mod")
+        self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_dir + "/doc2vec.mod")
 
     def infer_vocab_content_vectors(self, new_inference=False, category=None, infer_steps=10):
         if not new_inference:

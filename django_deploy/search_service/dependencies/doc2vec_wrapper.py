@@ -145,7 +145,7 @@ class D2VWrapper:
             self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
 
             logging.info("Loading all_base_vocab_docs vectors")
-            self.inferred_vectors = cPickle.load(model_save_dir + "/doc_vectors.mod")
+            self.inferred_vectors = joblib.load(model_save_dir + "/doc_vectors.mod")
 
         logging.info("Loading trained Doc2Vec model")
         self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_dir + "/doc2vec.mod")

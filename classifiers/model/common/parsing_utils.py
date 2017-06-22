@@ -3,6 +3,8 @@ import numpy as np
 
 from collections import namedtuple
 
+from text_preprocess import preprocess_text
+
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -93,6 +95,13 @@ def tagged_docs_from_content(content_series, content_headers, labels):
                                                                        [row["index"]],
                                                                        labels.iloc[row["index"]],
                                                                        row["header"]), axis=1)
+
+
+def tagged_docs_from_plaintext(content_series_plain, content_headers_plain, labels):
+    content_series = pd.Series(content_series_plain).apply(preprocess_text)
+    content_headers = pd.Series(content_headers_plain).apply(preprocess_text)
+
+    return tagged_docs_from_content(content_series, content_headers, labels)
 
 
 def parse_header_docs(full_docs):

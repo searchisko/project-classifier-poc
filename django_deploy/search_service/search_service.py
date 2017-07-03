@@ -1,6 +1,3 @@
-# TODO: resolve $PYTHONPATH - might not be the nicest way of resolving dependencies
-# export PYTHONPATH=/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/django_deploy/search_service
-
 import os
 
 import logging
@@ -28,8 +25,9 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/persisted_model_prod"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/persisted_model_w_none"
     service_meta = dict()
+    minimized_persistence = False
 
     def __init__(self):
 
@@ -42,11 +40,12 @@ class RelevanceSearchService:
 
         self.service_meta["model_train_start_timestamp"] = None
         self.service_meta["model_train_end_timestamp"] = None
-        self.service_meta["model_train_src_dir"] = None
+        self.service_meta["model_train_src"] = None
 
         self.service_meta["model_eval_result"] = None
         self.service_meta["score_requests_counter"] = 0
 
+        # TODO: check vector_length=800
         self.d2v_wrapper = D2VWrapper()
 
     @staticmethod
@@ -77,7 +76,7 @@ class RelevanceSearchService:
             logging.info("Predicting split probs")
             inferred_scores = split_vector_classifier.predict_proba(doc_vectors.iloc[test_doc_indices])
             categories_ordered = list(split_vector_classifier.classes_)
-            inferred_scores_df = pd.DataFrame(data=inferred_scores, columns=categories_ordered, index=test_doc_indices)
+            inferred_scores_df = pd.DataFrame(data=inferred_scores, columns=categories_ordered, index=doc_vectors.iloc[test_doc_indices].index)
 
             docs_scores = docs_scores.append(inferred_scores_df)
 
@@ -93,6 +92,50 @@ class RelevanceSearchService:
         logging.info("Score tuner trained")
         return score_tuner
 
+    def _train_vector_classifier(self, X, y, classifier=None):
+        if classifier is None:
+            classifier = self._get_classifier_instance()
+        # superior classifier training
+        logging.info("Fitting classifier on %s docs vectors" % len(X))
+        classifier.fit(X, y)
+
+        logging.info("Model %s fitted" % classifier.__class__)
+        return classifier
+
+    def _train_d2v_wrapper(self):
+        # categories are inferred by target directory containment in vocab init of d2v
+        self.model_categories = self.d2v_wrapper.content_categories
+        # train d2v model, infer docs vectors and train adjacent classifier
+        # TODO set epochs
+        self.d2v_wrapper.train_model(epochs=3)
+
+        doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
+        doc_vectors = doc_vectors_labeled.iloc[:, :-1]
+        y = doc_vectors_labeled.iloc[:, -1]
+
+        return doc_vectors, y
+
+    """TODO"""
+    def train_on_docs(self, doc_ids, doc_headers, doc_contents, y):
+        doc_contents = pd.Series(doc_contents)
+        doc_headers = pd.Series(doc_headers)
+        y = pd.Series(y)
+
+        logging.info("Training service on docs: %s" % np.array(doc_ids))
+        # TODO: tagged_docs_from_plaintext does not shits off a list of words but plaintext again
+        training_docs_objects = parsing.tagged_docs_from_plaintext(doc_contents, doc_headers, y)
+        self.d2v_wrapper.init_vocab_from_docs(training_docs_objects)
+
+        doc_vectors, _ = self._train_d2v_wrapper()
+        doc_vectors.index = y.index
+
+        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
+        self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
+
+        self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow()
+        logging.info("Model training finished")
+        self.service_meta["model_train_src"] = "%s docs, %s categories" % (len(doc_ids), len(np.unique(y)))
+
     """
     Train all required system models on a content in a given train_content_dir folder.
     The folder should contain categories' content in csv-formed files <category>_content.csv.
@@ -102,39 +145,28 @@ class RelevanceSearchService:
         # init d2v_wrapper with categorized documents
         self.service_meta["model_train_start_timestamp"] = datetime.datetime.utcnow()
 
-        self.d2v_wrapper.init_model_vocab(content_basepath=train_content_dir, drop_short_docs=10)
-        # categories are inferred by target directory containment in vocab init of d2v
-        self.model_categories = self.d2v_wrapper.content_categories
-        # train d2v model, infer docs vectors and train adjacent classifier
-        # TODO set epochs
-        self.d2v_wrapper.train_model(epochs=10)
+        self.d2v_wrapper.init_model_vocab(content_basepath=train_content_dir,
+                                          drop_short_docs=10)
 
-        doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
-        doc_vectors = doc_vectors_labeled.iloc[:, :-1]
-        y = doc_vectors_labeled.iloc[:, -1]
+        doc_vectors, y = self._train_d2v_wrapper()
 
-        # superior classifier training
-        logging.info("Fitting classifier on %s docs vectors" % len(doc_vectors_labeled))
-        self.vector_classifier = self._get_classifier_instance()
-        self.vector_classifier.fit(doc_vectors, y)
-
-        logging.info("Model %s fitted" % self.vector_classifier.__class__)
+        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
 
         # scores tuning
         self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
 
         self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow()
         logging.info("Model training finished")
-        self.service_meta["model_train_src_dir"] = train_content_dir
+        self.service_meta["model_train_src"] = train_content_dir
 
     def persist_trained_model(self, persist_dir=default_model_dir):
-        if self.service_meta["model_train_src_dir"] is None:
+        if self.service_meta["model_train_src"] is None:
             logging.error("Service models have not been trained yet. Run self.train(train_content_path) first")
 
         if not os.path.exists(persist_dir):
             os.makedirs(persist_dir)
         # use d2v_wrapper persistence and classifier persistence
-        self.d2v_wrapper.persist_trained_wrapper(persist_dir, model_only=True)
+        self.d2v_wrapper.persist_trained_wrapper(persist_dir, model_only=self.minimized_persistence)
         # persist all dependent objects to a single, newly created directory (persist_dir)
 
         classifier_path = persist_dir + "/" + self.classifier_name
@@ -155,15 +187,16 @@ class RelevanceSearchService:
     """load previously trained model from the persist_dir"""
 
     def load_trained_model(self, persist_dir=default_model_dir):
-        if self.service_meta["model_train_src_dir"] is not None:
-            logging.warn("Overriding the loaded model from %s" % self.service_meta["model_train_src_dir"])
+        if self.service_meta["model_train_src"] is not None:
+            logging.warn("Overriding the loaded model from %s" % self.service_meta["model_train_src"])
 
-        self.d2v_wrapper.load_persisted_wrapper(persist_dir, model_only=True)
-        self.model_categories = self.d2v_wrapper.content_categories
+        self.d2v_wrapper.load_persisted_wrapper(persist_dir, model_only=self.minimized_persistence)
 
         classifier_path = persist_dir + "/" + self.classifier_name
         logging.info("Loading pickled classifier from %s" % classifier_path)
         self.vector_classifier = joblib.load(classifier_path)
+
+        self.model_categories = self.vector_classifier.classes_
 
         tuner_path = persist_dir + "/score_tuner.mod"
         logging.info("Loading score tuner from %s" % tuner_path)
@@ -190,10 +223,9 @@ class RelevanceSearchService:
 
     def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
         logging.info("Requested docs: %s for scoring" % list(doc_ids))
-        # check integrity
-        if type(doc_ids) is not pd.Series:
-            doc_ids = pd.Series(doc_ids)
 
+        doc_ids = pd.Series(doc_ids)
+        # check integrity
         if doc_ids.unique().__len__() < len(doc_ids):
             raise ValueError("doc_ids parameter must contain unique values to further specifically identify docs.")
 
@@ -227,6 +259,8 @@ class RelevanceSearchService:
         new_content_scores_tuned = self.score_tuner.tune_new_docs_scores(new_content_probs_df)
 
         self.service_meta["score_requests_counter"] += len(doc_ids)
+
+        # TODO: no reason to return tuple
         return new_content_scores_tuned, cats_ordered
 
     """
@@ -236,6 +270,7 @@ class RelevanceSearchService:
     """
 
     def evaluate_performance(self, folds=5, target_search_threshold=0.5):
+        # TODO: evaluate does not work if model_only persistence is set to True
         logging.info("Performance evaluation on service \n%s" % self.service_meta["init_timestamp"])
         vocab_docs = self.d2v_wrapper.infer_vocab_content_vectors()
         vocab_docs_vectors = vocab_docs.iloc[:, :-1]

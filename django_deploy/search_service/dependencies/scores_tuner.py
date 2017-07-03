@@ -75,8 +75,8 @@ class ScoreTuner:
                   "TN": len(true_negatives),
                   "FP": len(false_positives),
                   "FN": len(false_negatives)}
-        logging.info(
-            "get_eval_groups_for_category on %s separated by threshold %s returns: %s" % (category, threshold, ratios))
+        # logging.info("get_eval_groups_for_category on %s separated by threshold %s returns: %s"
+        #   % (category, threshold, ratios))
 
         return ratios
 
@@ -90,7 +90,7 @@ class ScoreTuner:
         recall = float(eval_groups["TP"]) / (eval_groups["TP"] + eval_groups["FN"]) \
             if eval_groups["TP"] + eval_groups["FN"] > 0 else 0
 
-        logging.info("precision_recall_for_category returns: %s, %s" % (precision, recall))
+        # logging.info("precision_recall_for_category returns: %s, %s" % (precision, recall))
 
         return precision, recall
 
@@ -101,21 +101,27 @@ class ScoreTuner:
         f_score = (beta * beta + 1) * precision * recall / (
         beta * beta * precision + recall) if precision + recall > 0 else 0
 
-        logging.info("f_score_for_category params: cat %s, beta %s, threshold %s -> fscore: %s" % (
-        category, beta, threshold, f_score))
+        # logging.info("f_score_for_category params: cat %s, beta %s, threshold %s -> fscore: %s"
+        #              % (category, beta, threshold, f_score))
         return f_score
 
     # C)
     # maximize the f-score for given f-beta by tuning the threshold param separating TP/FN and TN/FP on category scores
     def maximize_f_score(self, y_expected, cat_scores, category, beta):
+        # TODO: debug
+        convergence_steps = 0
+
         def inv_f_score_func_wrapper(x):
+            # global convergence_steps
+            # convergence_steps += 1
             return -self.f_score_for_category(y_expected, cat_scores, category, x, beta)
 
-        logging.info(
-            "Minimizing inverted f_score of cat %s for beta %s by %s scores" % (category, beta, len(cat_scores)))
+        logging.info("Tuning f_score of cat %s for beta %s by %s scores" % (category, beta, len(cat_scores)))
+
         opt_threshold = minimize_scalar(fun=inv_f_score_func_wrapper, method="bounded", bounds=(0, 1)).x
         opt_score = -inv_f_score_func_wrapper(opt_threshold)
-        logging.info("Threshold for category %s converged to %s with score %s" % (category, opt_threshold, opt_score))
+        logging.info("Threshold for category %s converged in %s steps to %s with f(beta)= %s"
+                     % (category, -1, opt_threshold, opt_score))
 
         return opt_threshold
 
@@ -126,7 +132,6 @@ class ScoreTuner:
         # relative ratios of spaces divided by a split of <0, 1> prob space by a value of doc prob
         # where space is determined by a distance of doc_i prob from original_cat_threshold
         target_threshold = general_search_threshold
-        logging.info("Normalizing probs %s by opt original threshold %s" % (cat_probs.values, original_cat_threshold))
 
         # the figure projects points into <0, 1> only with symmetric target_threshold = general_search_threshold
         probs_below_trhd = cat_probs[cat_probs < original_cat_threshold]
@@ -188,6 +193,8 @@ class ScoreTuner:
     # will tune the scores of categories so that the same threshold for all categories can be applied
     # and still the selected content will qualitatively persist the maximized F-score
     def tune_all_scores(self, scores_df):
+        logging.info("Tuning probs of %s docs" % (len(scores_df)))
+
         norm_scores_df = pd.DataFrame()
         for cat_label in scores_df.keys().unique():
             norm_scores_df[cat_label] = self.tune_cat_scores(scores_df[cat_label], cat_label)

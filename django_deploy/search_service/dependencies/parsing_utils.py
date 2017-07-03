@@ -24,8 +24,10 @@ training_attributes = ["sys_content_plaintext", "sys_description", "sys_title"]
 
 
 def select_headers(df):
-    return df[training_attributes[2]].apply(lambda doc_text: doc_text.replace(".", " . "))\
-        .apply(lambda content: token_split(content))
+    selected_text_series = df.apply(lambda content: content[1] if content[1] else content[0] if content[0] else "", axis=1)\
+                             .apply(lambda doc_text: doc_text.replace(".", " . "))\
+                             .apply(lambda content: token_split(content))
+    return selected_text_series
 
 
 def select_training_content(df, make_document_mapping=False, sent_split=True):
@@ -103,7 +105,22 @@ def tagged_docs_from_plaintext(content_series_plain, content_headers_plain, labe
     return tagged_docs_from_content(content_series, content_headers, labels)
 
 
+def create_dataset_from_tagged_docs(tagged_docs, directory, source=""):
+    target_attributes = "sys_title,sys_description,sys_content_plaintext,source,target".split(",")
+    target_df = pd.DataFrame(columns=target_attributes)
+
+    target_df["sys_title"] = tagged_docs.apply(lambda cat_doc: cat_doc.header_words)
+    target_df["sys_description"] = tagged_docs.apply(lambda cat_doc: "")
+    target_df["sys_content_plaintext"] = tagged_docs.apply(lambda cat_doc: cat_doc.words)
+    target_df["source"] = tagged_docs.apply(lambda cat_doc: source)
+    target_df["target"] = tagged_docs.apply(lambda cat_doc: "None")
+    with open(directory, "w") as wfile:
+        target_df.to_csv(wfile, index=False, encoding='utf-8')
+
+
 def parse_header_docs(full_docs):
+    # TODO: does not work at all! give all [nan]s
+
     out_docs = full_docs.apply(lambda full_doc: CategorizedDocument(full_doc.header_words if not type(full_doc.header_words) == float else [],
                                                                     full_doc.tags,
                                                                     full_doc.category_expected,
@@ -129,3 +146,11 @@ def get_content_as_dataframe(content_basepath, basepath_suffix, content_categori
         all_content = all_content.append(new_content, ignore_index=True)
 
     return all_content
+
+
+def drop_duplicate_docs(docs_series):
+    docs_df = pd.DataFrame(columns=["header", "content"], index=docs_series.index)
+    docs_df["header"] = docs_series.apply(lambda doc: doc.header_words)
+    docs_df["content"] = docs_series.apply(lambda doc: doc.words)
+
+    return docs_series[~docs_df.duplicated()]

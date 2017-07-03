@@ -13,6 +13,7 @@ import pandas as pd
 from gensim.models import doc2vec
 import numpy as np
 from sklearn.externals import joblib
+from sklearn.model_selection import train_test_split
 
 import parsing_utils as parsing
 # from .categorized_document import CategorizedDocument
@@ -24,9 +25,9 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 class D2VWrapper:
     # content_categories might be set from outer scope
-    content_categories = None
-    all_content_tagged_docs = None
+    train_content_tagged_docs = None
     docs_category_mapping = None
+    content_categories = None
     inferred_vectors = None
     header_docs = None
 
@@ -42,14 +43,13 @@ class D2VWrapper:
         # infer the trained categories according to the files in directory
         dir_files = [f for f in listdir(content_basepath) if isfile(join(content_basepath, f))]
         self.content_categories = map(
-            lambda dir_file_path: dir_file_path.replace(content_basepath, "").replace(basepath_suffix, ""),
-            dir_files)
+            lambda dir_file_path: dir_file_path.replace(content_basepath, "").replace(basepath_suffix, ""), dir_files)
 
         # initializes the vocabulary by the given categories (content_categories)
         # in the given directory (content_basepath)
         assert doc2vec.FAST_VERSION > -1, "this will be painfully slow otherwise"
 
-        all_content_df = parsing.get_content_as_dataframe(content_basepath, basepath_suffix, self.content_categories).drop_duplicates()
+        all_content_df = parsing.get_content_as_dataframe(content_basepath, basepath_suffix, self.content_categories)
 
         # fills up the mapping of document ids (index) to its original categories
         # enabling the reverse search of all_base_vocab_docs vectors for each category and subsequent classification
@@ -75,29 +75,34 @@ class D2VWrapper:
             logging.info("%s all_base_vocab_docs included in vocab init" % self.docs_category_mapping.__len__())
 
         # transform the training sentences into TaggedDocument list
-        self.all_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens,
-                                                                        all_content_headers,
-                                                                        self.docs_category_mapping)
-        self.all_content_tagged_docs = self.all_content_tagged_docs.reset_index(drop=True)
+        self.train_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens,
+                                                                          all_content_headers,
+                                                                          self.docs_category_mapping)
+        self.train_content_tagged_docs = self.train_content_tagged_docs.reset_index(drop=True)
 
         self.init_vocab_from_docs()
 
-    def init_vocab_from_docs(self, docs=None):
+    def init_vocab_from_docs(self, docs=None, deduplicate=True):
         if docs is not None:
-            self.all_content_tagged_docs = docs
+            logging.info("Initializing d2v vocab from externally parsed CategorizedDocs")
+            self.train_content_tagged_docs = docs
+
+        if deduplicate:
+            logging.info("De-duplicating training content docs")
+            self.train_content_tagged_docs = parsing.drop_duplicate_docs(self.train_content_tagged_docs)
 
         # derive training all_base_vocab_docs of header content and push it into model vocabulary
-        self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+        self.header_docs = parsing.parse_header_docs(self.train_content_tagged_docs)
 
-        self.base_doc2vec_model.build_vocab(self.all_content_tagged_docs.append(self.header_docs))
+        self.base_doc2vec_model.build_vocab(self.train_content_tagged_docs.append(self.header_docs))
 
-        # after this step, vectors are already inferable - though the docs vectors needs to be embedded in train_model()
-        # all_base_vocab_docs vectors should be retrieved first after the training
+        # after this step, vector for any list of words is inferable - though the docs vectors needs to be embedded in
+        # train_model() all_base_vocab_docs vectors should be retrieved first after the training
 
     def train_model(self, shuffle=True, epochs=10):
         # now training on headers as well
 
-        if self.all_content_tagged_docs is None:
+        if self.train_content_tagged_docs is None:
             logging.error("D2V vocabulary not initialized. Training must follow the init_model_vocab()")
             return
         for epoch in range(epochs):
@@ -105,14 +110,14 @@ class D2VWrapper:
             logging.info("Epoch %s convergence descent alpha: %s" % (epoch, self.base_doc2vec_model.alpha))
 
             # shuffle support
-            train_ordered_tagged_docs = deepcopy(self.all_content_tagged_docs.values)
+            train_ordered_tagged_docs = deepcopy(self.train_content_tagged_docs.values)
             train_ordered_headers = deepcopy(self.header_docs.values)
             if shuffle and epoch > 0:
                 # shuffling is time-consuming and is not necessary in the first epoch (current order not seen before)
                 random.shuffle(train_ordered_tagged_docs)
                 random.shuffle(train_ordered_headers)
             else:
-                train_ordered_tagged_docs = self.all_content_tagged_docs
+                train_ordered_tagged_docs = self.train_content_tagged_docs
             # self.base_doc2vec_model.infer_vector(self.base_doc2vec_model.vocab.keys()[:50][0:10])
 
             self.base_doc2vec_model.train(pd.Series(train_ordered_tagged_docs).append(pd.Series(train_ordered_headers)))
@@ -124,7 +129,7 @@ class D2VWrapper:
             logging.info("Serializing wrapper model to: %s" % model_save_dir)
 
             logging.info("Persisting all_base_vocab_docs objects")
-            joblib.dump(self.all_content_tagged_docs, model_save_dir + "/doc_labeling.mod")
+            joblib.dump(self.train_content_tagged_docs, model_save_dir + "/doc_labeling.mod")
 
             logging.info("Persisting inferred vectors")
             joblib.dump(self.inferred_vectors, model_save_dir + "/doc_vectors.mod")
@@ -137,12 +142,12 @@ class D2VWrapper:
 
         if not model_only:
             logging.info("Loading all_base_vocab_docs objects")
-            self.all_content_tagged_docs = joblib.load(model_save_dir + "/doc_labeling.mod")
+            self.train_content_tagged_docs = joblib.load(model_save_dir + "/doc_labeling.mod")
 
-            self.content_categories = self.all_content_tagged_docs.apply(lambda doc: doc.category_expected).unique()
+            self.content_categories = self.train_content_tagged_docs.apply(lambda doc: doc.category_expected).unique()
 
             # header content parse from base all_base_vocab_docs objects
-            self.header_docs = parsing.parse_header_docs(self.all_content_tagged_docs)
+            self.header_docs = parsing.parse_header_docs(self.train_content_tagged_docs)
 
             logging.info("Loading all_base_vocab_docs vectors")
             self.inferred_vectors = joblib.load(model_save_dir + "/doc_vectors.mod")
@@ -160,9 +165,9 @@ class D2VWrapper:
         if category is None:
             # inference with default aprams config
             # TODO: try other inference params on new inference
-            self.inferred_vectors = self.infer_content_vectors(self.all_content_tagged_docs, infer_steps=infer_steps)
+            self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs, infer_steps=infer_steps)
 
-            self.inferred_vectors["y"] = [doc.category_expected for doc in self.all_content_tagged_docs]
+            self.inferred_vectors["y"] = [doc.category_expected for doc in self.train_content_tagged_docs]
 
             return self.inferred_vectors
         else:
@@ -176,6 +181,7 @@ class D2VWrapper:
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
+        # TODO: consider parallelization - no modification of the model shd make it easy to extract to parallel method
         logging.info("Inferring vectors of %s documents" % len(docs))
         content_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
                            for doc in docs]
@@ -196,7 +202,7 @@ class D2VWrapper:
 
     def get_doc_content(self, index, word_split=False):
         if word_split:
-            return self.all_content_tagged_docs.iloc[index].words
+            return self.train_content_tagged_docs.iloc[index].words
         else:
-            return parsing.content_from_words(self.all_content_tagged_docs.iloc[index].words)
+            return parsing.content_from_words(self.train_content_tagged_docs.iloc[index].words)
 

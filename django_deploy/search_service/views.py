@@ -41,7 +41,12 @@ def score(request):
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
 
-    request_json = json.loads(request.read())
+    try:
+        request_json = json.loads(request.read())
+    except ValueError:
+        return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
+                            status=400)
+
     logging.info("POST on score(), body:\n%s" % request_json)
     try:
         doc_id = request_json["doc"]["id"]
@@ -58,7 +63,8 @@ def score(request):
     logging.info("POST: Scoring document %s: header len: %s, content len: %s"
                  % (doc_id, len(doc_title.split()), len(doc_content.split())))
 
-    doc_scores, scores_categories = score_service_instance.score_doc(doc_id, doc_title, doc_content)
+    doc_scores = score_service_instance.score_doc(doc_id, doc_title, doc_content)
+    scores_categories = doc_scores.columns.values
 
     scores_object = _object_from_scores(doc_scores, scores_categories)
     single_doc_scores = scores_object[scores_object.keys()[0]]
@@ -66,10 +72,10 @@ def score(request):
     response_object = {"scoring": single_doc_scores}
     if sys_meta:
         sys_meta_object = {"response_status": "OK",
-                                       "request_time": start_time.isoformat(),
-                                       "response_time": datetime.utcnow().isoformat(),
-                                       "sys_model_training_time":
-                                           score_service_instance.service_meta["model_train_end_timestamp"].isoformat()
+                           "request_time": start_time.isoformat(),
+                           "response_time": datetime.utcnow().isoformat(),
+                           "sys_model_training_time":
+                               score_service_instance.service_meta["model_train_end_timestamp"].isoformat()
                            }
         response_object["sys_meta"] = sys_meta_object
 
@@ -84,8 +90,12 @@ def score_bulk(request):
 
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
+    try:
+        request_json = json.loads(request.read())
+    except ValueError:
+        return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
+                            status=400)
 
-    request_json = json.loads(request.read())
     logging.info("POST on score_bulk(), body:\n%s" % request_json)
 
     try:
@@ -100,7 +110,8 @@ def score_bulk(request):
     except KeyError:
         sys_meta = False
 
-    doc_scores, scores_categories = score_service_instance.score_docs_bulk(doc_ids, doc_titles, doc_contents)
+    doc_scores = score_service_instance.score_docs_bulk(doc_ids, doc_titles, doc_contents)
+    scores_categories = doc_scores.columns.values
     scores_object = _object_from_scores(doc_scores, scores_categories)
 
     response_object = {"scoring": scores_object}

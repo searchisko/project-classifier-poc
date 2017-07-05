@@ -25,11 +25,13 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/persisted_model_w_none"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_wout_none"
     service_meta = dict()
-    minimized_persistence = False
+    minimized_persistence = True
 
-    def __init__(self):
+    def __init__(self, default_dir=None):
+        if default_dir is not None:
+            self.default_model_dir = default_dir
 
         self.service_meta["init_timestamp"] = datetime.datetime.utcnow()
 
@@ -45,8 +47,7 @@ class RelevanceSearchService:
         self.service_meta["model_eval_result"] = None
         self.service_meta["score_requests_counter"] = 0
 
-        # TODO: check vector_length=800
-        self.d2v_wrapper = D2VWrapper()
+        self.d2v_wrapper = D2VWrapper(vector_length=800)
 
     @staticmethod
     def _get_classifier_instance():
@@ -107,7 +108,7 @@ class RelevanceSearchService:
         self.model_categories = self.d2v_wrapper.content_categories
         # train d2v model, infer docs vectors and train adjacent classifier
         # TODO set epochs
-        self.d2v_wrapper.train_model(epochs=3)
+        self.d2v_wrapper.train_model(epochs=10)
 
         doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
         doc_vectors = doc_vectors_labeled.iloc[:, :-1]
@@ -122,11 +123,11 @@ class RelevanceSearchService:
         y = pd.Series(y)
 
         logging.info("Training service on docs: %s" % np.array(doc_ids))
-        # TODO: tagged_docs_from_plaintext does not shits off a list of words but plaintext again
+
         training_docs_objects = parsing.tagged_docs_from_plaintext(doc_contents, doc_headers, y)
         self.d2v_wrapper.init_vocab_from_docs(training_docs_objects)
 
-        doc_vectors, _ = self._train_d2v_wrapper()
+        doc_vectors, y = self._train_d2v_wrapper()
         doc_vectors.index = y.index
 
         self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
@@ -260,8 +261,7 @@ class RelevanceSearchService:
 
         self.service_meta["score_requests_counter"] += len(doc_ids)
 
-        # TODO: no reason to return tuple
-        return new_content_scores_tuned, cats_ordered
+        return new_content_scores_tuned
 
     """
     Evaluates performance of the deployed classifier in CV manner.
@@ -270,7 +270,7 @@ class RelevanceSearchService:
     """
 
     def evaluate_performance(self, folds=5, target_search_threshold=0.5):
-        # TODO: evaluate does not work if model_only persistence is set to True
+        # TODO: evaluate does not work if model_only persistence is set to True - will be fixed by merge with CV eval
         logging.info("Performance evaluation on service \n%s" % self.service_meta["init_timestamp"])
         vocab_docs = self.d2v_wrapper.infer_vocab_content_vectors()
         vocab_docs_vectors = vocab_docs.iloc[:, :-1]
@@ -316,3 +316,7 @@ class RelevanceSearchService:
         self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow(),
                                                   "mean_performance": np.mean(performance),
                                                   "categories_mean_performance": cats_performance.apply(np.mean, axis=0)}
+
+    def evaluate_performance_eval_set(self, folds=5, target_search_threshold=0.5):
+        # TODO: merge search_service_cv_test to self.evaluate_performance
+        pass

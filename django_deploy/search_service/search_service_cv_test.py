@@ -16,7 +16,7 @@ base_d2v_wrapper = D2VWrapper()
 
 content_basepath="../../data/content/prod_sample"
 content_categories = ["amq", "eap", "webserver", "datagrid", "fuse", "brms", "bpmsuite", "devstudio", "cdk",
-                "developertoolset", "rhel", "softwarecollections", "mobileplatform", "openshift", "none"]
+                "developertoolset", "rhel", "softwarecollections", "mobileplatform", "openshift"]
 # content_categories = ["amq", "webserver", "datagrid"]
 
 
@@ -42,7 +42,7 @@ splits = 5
 strat_kfold = StratifiedKFold(n_splits=splits, shuffle=True)
 logging.info("Gathering training content scores in %s splits" % splits)
 
-docs_scores = pd.DataFrame(columns=content_categories)
+docs_scores = pd.DataFrame(columns=content_categories+["y"])
 
 for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y"]):
     service = RelevanceSearchService()
@@ -54,13 +54,14 @@ for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y
                           doc_headers=train_docs_df["headers"], y=train_docs_df["y"])
 
     test_docs_scores, _ = service.score_docs_bulk(doc_ids=test_docs_df.index, doc_contents=test_docs_df["content"],
-                                                  doc_headers=test_docs_df["headers"])
+                                               doc_headers=test_docs_df["headers"])
+    test_docs_scores["y"] = test_docs_df["y"]
 
     docs_scores = docs_scores.append(test_docs_scores)
 
 print docs_scores.describe()
 
-scores_pickle_path = "scores_pickled_w_none.dump"
+scores_pickle_path = "scores_pickled_wout_none.dump"
 logging.info("Pickling scores to %s" % scores_pickle_path)
 joblib.dump(docs_scores, scores_pickle_path)
 

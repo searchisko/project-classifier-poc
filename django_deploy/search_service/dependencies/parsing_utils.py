@@ -99,8 +99,8 @@ def tagged_docs_from_content(content_series, content_headers, labels):
 
 
 def tagged_docs_from_plaintext(content_series_plain, content_headers_plain, labels):
-    content_series = pd.Series(content_series_plain).apply(preprocess_text)
-    content_headers = pd.Series(content_headers_plain).apply(preprocess_text)
+    content_series = pd.Series(content_series_plain).apply(preprocess_text).apply(token_split)
+    content_headers = pd.Series(content_headers_plain).apply(preprocess_text).apply(token_split)
 
     return tagged_docs_from_content(content_series, content_headers, labels)
 
@@ -119,8 +119,6 @@ def create_dataset_from_tagged_docs(tagged_docs, directory, source=""):
 
 
 def parse_header_docs(full_docs):
-    # TODO: does not work at all! give all [nan]s
-
     out_docs = full_docs.apply(lambda full_doc: CategorizedDocument(full_doc.header_words if not type(full_doc.header_words) == float else [],
                                                                     full_doc.tags,
                                                                     full_doc.category_expected,
@@ -150,7 +148,7 @@ def get_content_as_dataframe(content_basepath, basepath_suffix, content_categori
 
 def drop_duplicate_docs(docs_series):
     docs_df = pd.DataFrame(columns=["header", "content"], index=docs_series.index)
-    docs_df["header"] = docs_series.apply(lambda doc: doc.header_words)
-    docs_df["content"] = docs_series.apply(lambda doc: doc.words)
+    docs_df["header"] = docs_series.apply(lambda doc: doc.header_words).apply(str).apply(hash)
+    docs_df["content"] = docs_series.apply(lambda doc: doc.words).apply(str).apply(hash)
 
     return docs_series[~docs_df.duplicated()]

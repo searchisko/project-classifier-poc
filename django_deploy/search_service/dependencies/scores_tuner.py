@@ -98,8 +98,8 @@ class ScoreTuner:
     # evaluates the f-score for given f-beta by tuning the threshold param separating TP/FN and TN/FP on category scores
     def f_score_for_category(self, y_expected, cat_scores, category, threshold, beta):
         precision, recall = self.precision_recall_for_category(y_expected, cat_scores, category, threshold)
-        f_score = (beta * beta + 1) * precision * recall / (
-        beta * beta * precision + recall) if precision + recall > 0 else 0
+        f_score = (beta * beta + 1) * precision * recall / (beta * beta * precision + recall) \
+            if precision + recall > 0 else 0
 
         # logging.info("f_score_for_category params: cat %s, beta %s, threshold %s -> fscore: %s"
         #              % (category, beta, threshold, f_score))
@@ -108,7 +108,6 @@ class ScoreTuner:
     # C)
     # maximize the f-score for given f-beta by tuning the threshold param separating TP/FN and TN/FP on category scores
     def maximize_f_score(self, y_expected, cat_scores, category, beta):
-        # TODO: debug
         convergence_steps = 0
 
         def inv_f_score_func_wrapper(x):
@@ -155,7 +154,8 @@ class ScoreTuner:
         return norm_cat_scores
 
     # E:0) General linear scaling function provider
-    def get_scaling_func(self, input_intvl, target_intvl, lower_border=0.1):
+    @staticmethod
+    def get_scaling_func(input_intvl, target_intvl, lower_border=0.1):
         targets = np.array(target_intvl)
         coef_matrix = np.matrix([[input_intvl[0], 1],
                                  [input_intvl[1], 1]])
@@ -178,7 +178,6 @@ class ScoreTuner:
         # normalization function - linear function mapping interval <1000, 20000> (= category size) to <5, 0.2>:
         cats_order_by_size = pd.Series(data=cats_sizes.values.argsort(), index=cats_sizes.index)
 
-        # TODO: betas for categories are not as nice as we might like - that might need some non-linear function
         scaling_f = self.get_scaling_func(input_intvl=[cats_order_by_size.min(), cats_order_by_size.max()],
                                           target_intvl=[5, 0.2])
 
@@ -245,7 +244,7 @@ class ScoreTuner:
         return scores_df, all_y_expected
 
 
-# TODO: for TEST:
+# for TEST do:
 # scores_df, y_expected = load_pickled_scores("temp_pickled_scores_df.dump", "temp_pickled_y_expected.dump")
 # performance = evaluate(y_expected, scores_df)
 # logging.warn("Overall performance: %s" % performance)

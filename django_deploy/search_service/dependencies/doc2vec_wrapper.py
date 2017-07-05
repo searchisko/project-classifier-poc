@@ -2,7 +2,6 @@
 # https://groups.google.com/forum/#!msg/word2vec-toolkit/Q49FIrNOQRo/J6KG8mUj45sJ
 import cPickle
 import logging
-import multiprocessing
 import random
 from copy import deepcopy
 
@@ -16,11 +15,20 @@ from sklearn.externals import joblib
 from sklearn.model_selection import train_test_split
 
 import parsing_utils as parsing
+
+# parallel support
+import joblib
+from joblib import Parallel, delayed
+import multiprocessing
 # from .categorized_document import CategorizedDocument
 # from collections import namedtuple
 # CategorizedDocument = namedtuple('CategorizedDocument', 'words tags category_expected header_words')
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+
+def async_trigger(wrapper, wordlist):
+    return wrapper.infer_content_vector(wordlist)
 
 
 class D2VWrapper:
@@ -155,7 +163,7 @@ class D2VWrapper:
         logging.info("Loading trained Doc2Vec model")
         self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_dir + "/doc2vec.mod")
 
-    def infer_vocab_content_vectors(self, new_inference=False, category=None, infer_steps=10):
+    def infer_vocab_content_vectors(self, new_inference=False, category=None):
         if not new_inference:
             if self.inferred_vectors is not None:
                 logging.info("Returning already inferred doc vectors of %s all_base_vocab_docs" % len(self.inferred_vectors))
@@ -165,7 +173,7 @@ class D2VWrapper:
         if category is None:
             # inference with default aprams config
             # TODO: try other inference params on new inference
-            self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs, infer_steps=infer_steps)
+            self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs)
 
             self.inferred_vectors["y"] = [doc.category_expected for doc in self.train_content_tagged_docs]
 
@@ -175,21 +183,35 @@ class D2VWrapper:
             # implement if needed
             return
 
+    def infer_content_vector(self, wordlist, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
+        return self.base_doc2vec_model.infer_vector(wordlist, infer_alpha, infer_subsample, infer_steps)
+
+    def infer_vectors_parallel(self, docs, jobs=multiprocessing.cpu_count()):
+        pool = multiprocessing.Pool(processes=jobs)
+        results = [pool.apply_async(async_trigger, args=(self, doc.words)) for doc in docs]
+        results = [p.get() for p in results]
+
+        return results
+        # Parallel(n_jobs=jobs)(delayed(self._infer_content_vector)(doc.words) for doc in docs)
+
+    def _infer_vectors_non_parallel(self, docs, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
+        return [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps) for doc in docs]
+
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
-    def infer_content_vectors(self, docs, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
+    def infer_content_vectors(self, docs):
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
-        # TODO: consider parallelization - no modification of the model shd make it easy to extract to parallel method
         logging.info("Inferring vectors of %s documents" % len(docs))
-        content_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
-                           for doc in docs]
+        # TODO: parallelization by pooling is not sustainable - processes supposedly for each doc - needs batching
+        # content_vectors = self.infer_vectors_parallel(docs)
+        content_vectors = self._infer_vectors_non_parallel(docs)
 
         # header vectors inference
         logging.info("Inferring vectors of %s headers" % len(header_docs))
-        header_vectors = [self.base_doc2vec_model.infer_vector(doc.words, infer_alpha, infer_subsample, infer_steps)
-                          for doc in header_docs]
+        # header_vectors = self.infer_vectors_parallel(header_docs)
+        header_vectors = self._infer_vectors_non_parallel(header_docs)
 
         content_vectors_df = pd.DataFrame(content_vectors)
         header_vectors_df = pd.DataFrame(header_vectors)

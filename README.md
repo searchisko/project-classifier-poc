@@ -1,15 +1,15 @@
 # Project classifier for RH sites content
-Proof of concept of a system able to estimate the relevance of an arbitrary content towards the given categories.
+A service able to estimate the relevance of an arbitrary content towards the learned categories.
 
-The system is able to categorize the unseen document by its content 
-(and optionally other given attributes).
-In addition, it is also able to provide the relevance scoring mechanism enabling the potentially relevant content 
-to be included in search results for training categories.
+The system is able to score the unseen document by its content 
+(and potentially other attributes) based on its similarity to the seen ones.
+It is also able to provide the relevance scoring mechanism enabling the potentially relevant content 
+to be included in search results for trained categories.
 
 The system might be integrated into RH 
-[content search services](https://developers.redhat.com/resources) using searchisko. 
+[content search services](https://developers.redhat.com/resources) using Searchisko. 
 
-It might also be extended to provide a smart content-based recommender system for web portals 
+It might also be further extended to provide a smart content-based recommender system for web portals 
 with sufficient amount of training documents (regardless of categorization).
 
 Feel free to give us a poke with any piece of an idea about stuff.

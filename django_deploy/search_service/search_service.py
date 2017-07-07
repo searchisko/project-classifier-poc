@@ -25,11 +25,14 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_wout_none"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_w_none_2"
     service_meta = dict()
     minimized_persistence = True
+    none_category = None
 
-    def __init__(self, default_dir=None):
+    def __init__(self, default_dir=None, none_category=None):
+        self.none_category = none_category
+
         if default_dir is not None:
             self.default_model_dir = default_dir
 
@@ -89,6 +92,10 @@ class RelevanceSearchService:
     """
     def _train_score_tuner(self, doc_vectors, y, score_tuner):
         scores_df = self._score_train_content(doc_vectors, y)
+
+        if self.none_category is not None:
+            scores_df = scores_df[list(set(scores_df.columns)-{self.none_category})]
+
         score_tuner.train_categories_thresholds(y, scores_df)
         logging.info("Score tuner trained")
         return score_tuner
@@ -108,7 +115,7 @@ class RelevanceSearchService:
         self.model_categories = self.d2v_wrapper.content_categories
         # train d2v model, infer docs vectors and train adjacent classifier
         # TODO set epochs
-        self.d2v_wrapper.train_model(epochs=10)
+        self.d2v_wrapper.train_model(epochs=1)
 
         doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
         doc_vectors = doc_vectors_labeled.iloc[:, :-1]

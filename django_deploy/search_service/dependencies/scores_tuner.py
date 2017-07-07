@@ -18,6 +18,7 @@ Stateful provider of scaling service for scores of categories as inferred by cla
 class ScoreTuner:
     cats_original_thresholds = pd.Series()
     trained = False
+    none_category_label = "None"
 
     def __init__(self):
         pass
@@ -30,6 +31,7 @@ class ScoreTuner:
     def train_categories_thresholds(self, y_expected, cats_scores):
         cats_betas = self.beta_for_categories_provider(y_expected)
         categories_labels = pd.Series(data=cats_betas.index, index=cats_betas.index)
+        categories_labels = categories_labels[categories_labels != self.none_category_label]
 
         self.cats_original_thresholds = categories_labels.apply(
             lambda cat_label: self.maximize_f_score(y_expected, cats_scores[cat_label], cat_label, cats_betas.loc[cat_label]))
@@ -45,7 +47,7 @@ class ScoreTuner:
     def tune_new_docs_scores(self, docs_scores):
         norm_scores_df = pd.DataFrame(columns=docs_scores.keys(), index=docs_scores.index)
 
-        for cat_label in docs_scores.keys():
+        for cat_label in self.cats_original_thresholds.index.values:
             norm_scores_df[cat_label] = self.tune_cat_scores(docs_scores[cat_label], cat_label)
         return norm_scores_df
 
@@ -179,7 +181,7 @@ class ScoreTuner:
         cats_order_by_size = pd.Series(data=cats_sizes.values.argsort(), index=cats_sizes.index)
 
         scaling_f = self.get_scaling_func(input_intvl=[cats_order_by_size.min(), cats_order_by_size.max()],
-                                          target_intvl=[5, 0.2])
+                                          target_intvl=[2, 0.2])
 
         # lower betas weight more significantly precision, higher weight more recall
         cats_betas = cats_order_by_size.apply(scaling_f)

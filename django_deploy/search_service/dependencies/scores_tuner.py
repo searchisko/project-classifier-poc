@@ -18,7 +18,6 @@ Stateful provider of scaling service for scores of categories as inferred by cla
 class ScoreTuner:
     cats_original_thresholds = pd.Series()
     trained = False
-    none_category_label = "None"
 
     def __init__(self):
         pass
@@ -31,7 +30,6 @@ class ScoreTuner:
     def train_categories_thresholds(self, y_expected, cats_scores):
         cats_betas = self.beta_for_categories_provider(y_expected)
         categories_labels = pd.Series(data=cats_betas.index, index=cats_betas.index)
-        categories_labels = categories_labels[categories_labels != self.none_category_label]
 
         self.cats_original_thresholds = categories_labels.apply(
             lambda cat_label: self.maximize_f_score(y_expected, cats_scores[cat_label], cat_label, cats_betas.loc[cat_label]))
@@ -181,7 +179,7 @@ class ScoreTuner:
         cats_order_by_size = pd.Series(data=cats_sizes.values.argsort(), index=cats_sizes.index)
 
         scaling_f = self.get_scaling_func(input_intvl=[cats_order_by_size.min(), cats_order_by_size.max()],
-                                          target_intvl=[2, 0.2])
+                                          target_intvl=[5, 0.2])
 
         # lower betas weight more significantly precision, higher weight more recall
         cats_betas = cats_order_by_size.apply(scaling_f)
@@ -214,7 +212,7 @@ class ScoreTuner:
         combined_performance = np.average(cats_performance, weights=performance_scalars)
         return combined_performance
 
-    # E:1) computes a performance from the scope of a search results
+    # E:1) trains this ScoreTuner instance and computes a performance from the scope of a search results
     # considering as relevant the documents above the fixed threshold (general_search_threshold)
     # NOTE: both y_expected and scores_df must have same length and matching index
     def evaluate(self, y_expected, scores_df):
@@ -230,6 +228,29 @@ class ScoreTuner:
         combined_cat_performance = self.weighted_combine_cats_predictions(y_expected, cats_performance)
 
         return combined_cat_performance
+
+    # E:2) evaluate the performance of the splitting as estimated by this ScoreTuner instance
+    # using the pre-trained instance, not repeating the training process
+    def evaluate_trained(self, y_expected, scores_df, exclude_categories={"None"}):
+        scores_df["y"] = y_expected
+        taken_categories = set(scores_df.columns) - exclude_categories
+        scores_df_no_nans = scores_df.loc[scores_df["y"].isin(taken_categories), list(taken_categories)]
+        scores_df_filtered = scores_df_no_nans[list(taken_categories - {"y"})].applymap(float)
+        y_filtered = scores_df_no_nans["y"]
+
+        cats_betas = self.beta_for_categories_provider(y_filtered)
+        categories = pd.Series(scores_df_filtered.columns)
+
+        cats_perf = categories.apply(lambda cat: self.f_score_for_category(y_filtered,
+                                                                           scores_df_filtered[cat],
+                                                                           cat,
+                                                                           0.5,
+                                                                           cats_betas[cat]))
+        cats_perf.index = categories
+        # particular categories performance
+        logging.info("EVAL: categories performance: \n%s" % cats_perf)
+
+        return self.weighted_combine_cats_predictions(y_filtered, cats_perf)
 
     # Test method for standalone functionality evaluation
     @staticmethod

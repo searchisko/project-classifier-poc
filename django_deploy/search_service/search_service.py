@@ -1,4 +1,6 @@
 import os
+from os import listdir
+from os.path import isfile, join
 
 import logging
 import multiprocessing
@@ -25,14 +27,14 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_w_none_2"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_wout_none"
     service_meta = dict()
     minimized_persistence = True
-    none_category = None
 
-    def __init__(self, default_dir=None, none_category=None):
-        self.none_category = none_category
+    # debug global vars
+    train_scores_df = None
 
+    def __init__(self, default_dir=None):
         if default_dir is not None:
             self.default_model_dir = default_dir
 
@@ -91,12 +93,9 @@ class RelevanceSearchService:
     to be used for score tuning on a new content requested to be scored.
     """
     def _train_score_tuner(self, doc_vectors, y, score_tuner):
-        scores_df = self._score_train_content(doc_vectors, y)
-
-        if self.none_category is not None:
-            scores_df = scores_df[list(set(scores_df.columns)-{self.none_category})]
-
-        score_tuner.train_categories_thresholds(y, scores_df)
+        self.train_scores_df = self._score_train_content(doc_vectors, y)
+        self.train_scores_df["y"] = y
+        score_tuner.train_categories_thresholds(y, self.train_scores_df)
         logging.info("Score tuner trained")
         return score_tuner
 
@@ -115,7 +114,7 @@ class RelevanceSearchService:
         self.model_categories = self.d2v_wrapper.content_categories
         # train d2v model, infer docs vectors and train adjacent classifier
         # TODO set epochs
-        self.d2v_wrapper.train_model(epochs=1)
+        self.d2v_wrapper.train_model(epochs=10)
 
         doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
         doc_vectors = doc_vectors_labeled.iloc[:, :-1]
@@ -230,7 +229,7 @@ class RelevanceSearchService:
     """
 
     def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
-        logging.info("Requested docs: %s for scoring" % list(doc_ids))
+        logging.info("Requested docs: %s for scoring" % np.array(doc_ids))
 
         doc_ids = pd.Series(doc_ids)
         # check integrity
@@ -239,31 +238,31 @@ class RelevanceSearchService:
 
         if not all([self.d2v_wrapper, self.vector_classifier, self.score_tuner]):
             logging.warning("First service call. Will try to load model from self.default_model_dir")
-            # try:
-            self.load_trained_model()
-            # except IOError:
-            #     raise UserWarning(
-            #             "Depended models not found in self.default_model_dir = %s."
-            #             "Please train and export the model to the given directory "
-            #             "so it can be loaded at first score request" % self.default_model_dir)
+            try:
+                self.load_trained_model()
+            except IOError:
+                raise UserWarning(
+                        "Depended models not found in self.default_model_dir = %s."
+                        "Please train and export the model to the given directory "
+                        "so it can be loaded at first score request" % self.default_model_dir)
 
         # preprocess content
-        logging.info("Docs %s: preprocessing" % list(doc_ids))
+        logging.info("Docs %s: preprocessing" % np.array(doc_ids))
         doc_objects_series = pd.Series(data=parsing.tagged_docs_from_plaintext(doc_contents, doc_headers,
                                                                        pd.Series([None] * len(doc_ids))))
         # vectorize content
-        logging.info("Docs %s: vectorizing using trained Doc2Vec model" % list(doc_ids))
+        logging.info("Docs %s: vectorizing using trained Doc2Vec model" % np.array(doc_ids))
         new_docs_vectors = self.d2v_wrapper.infer_content_vectors(docs=doc_objects_series)
 
         # classify = predict probabilities for known categories
-        logging.info("Docs %s: classifying using %s classifier" % (list(doc_ids), self.classifier_name))
+        logging.info("Docs %s: classifying using %s classifier" % (np.array(doc_ids), self.classifier_name))
         new_content_probs = self.vector_classifier.predict_proba(X=new_docs_vectors)
         cats_ordered = list(self.vector_classifier.classes_)
         new_content_probs_df = pd.DataFrame(data=new_content_probs, columns=cats_ordered, index=doc_ids)
 
         # tune categories probabilities to scores
         logging.info("Docs %s: tuning probs according to optimized cats thresholds:\n%s"
-                     % (list(doc_ids), self.score_tuner.cats_original_thresholds))
+                     % (np.array(doc_ids), self.score_tuner.cats_original_thresholds))
         new_content_scores_tuned = self.score_tuner.tune_new_docs_scores(new_content_probs_df)
 
         self.service_meta["score_requests_counter"] += len(doc_ids)
@@ -271,49 +270,99 @@ class RelevanceSearchService:
         return new_content_scores_tuned
 
     """
-    Evaluates performance of the deployed classifier in CV manner.
+    Deep-evaluates the performance of the classifier with pre-defined service configuration.
+    To assure the distinct train-test sets, the evaluation does not use the instantiated service, but rather train the
+    new one and test it on left out data set in CV manner.
+    Eval data set is attempted to be found in a given eval_content_dir folder.
     The results are memorized in self.service_meta["model_eval_result"] after the test finishes
-    The test might take tens of minutes depending on a number of folds.
+    The test might take tens of minutes depending on a number of folds and a size of eval data set.
     """
 
-    def evaluate_performance(self, folds=5, target_search_threshold=0.5):
-        # TODO: evaluate does not work if model_only persistence is set to True - will be fixed by merge with CV eval
-        logging.info("Performance evaluation on service \n%s" % self.service_meta["init_timestamp"])
-        vocab_docs = self.d2v_wrapper.infer_vocab_content_vectors()
-        vocab_docs_vectors = vocab_docs.iloc[:, :-1]
-        vocab_y = vocab_docs.iloc[:, -1]
+    def evaluate_performance(self, eval_content_dir="../../data/content/prod_sample", folds=5, target_search_threshold=0.5):
+        logging.info("EVAL: evaluation routine started")
+        logging.info("EVAL: collecting evaluation content from %s" % eval_content_dir)
+
+        basepath_suffix = "_content.csv"
+        # infer the trained categories according to the files in directory
+        dir_files = [f for f in listdir(eval_content_dir) if isfile(join(eval_content_dir, f))]
+        content_categories = map(lambda dir_file_path: dir_file_path
+                                 .replace(eval_content_dir, "")
+                                 .replace(basepath_suffix, ""), dir_files)
+
+        logging.info("EVAL: Found %s categories to train on: %s" % (len(content_categories), np.array(content_categories)))
+
+        # parse the content into dataframe
+        all_content_df = parsing.get_content_as_dataframe(eval_content_dir, basepath_suffix, content_categories).drop_duplicates()
+
+        doc_content = all_content_df["sys_content_plaintext"]
+        doc_headers = parsing.select_headers(all_content_df).apply(
+            lambda content: "" if np.any(pd.isnull(content)) else content) \
+            .apply(lambda word_list: parsing.content_from_words(word_list))
+
+        doc_content.index = doc_headers.index
+        y = all_content_df["target"]
+
+        docs_df = pd.DataFrame(columns=["content", "headers"], index=doc_content.index)
+        docs_df["content"] = doc_content
+        docs_df["headers"] = doc_headers
+        docs_df["y"] = y
+
+        # drop duplicates from the set
+        docs_df = docs_df[~docs_df.duplicated(subset=["headers", "content"])]
+
+        # EVAL phase:
+        # split the content into selected (train/dev)/eval pieces and gather the documents scores
+        # inferred from the service trained on distinct content
 
         performance = []
-        cats_performance = pd.DataFrame(columns=self.model_categories)
+        cats_performance = pd.DataFrame(columns=content_categories)
+        # collecting statistics of categories performance based on the system scoring
 
         strat_kfold = StratifiedKFold(n_splits=folds, shuffle=True)
+        logging.info("EVAL: Gathering training content scores in %s splits" % folds)
 
-        for train_doc_indices, test_doc_indices in strat_kfold.split(vocab_docs_vectors, vocab_y):
-            self.vector_classifier.fit(vocab_docs_vectors.iloc[train_doc_indices], vocab_y.iloc[train_doc_indices])
+        test_docs_scores = pd.DataFrame(columns=content_categories + ["y"])
 
-            inferred_scores = self.vector_classifier.predict_proba(vocab_docs_vectors.iloc[test_doc_indices])
-            categories_ordered = list(self.vector_classifier.classes_)
-            inferred_scores_df = pd.DataFrame(data=inferred_scores, columns=categories_ordered, index=test_doc_indices)
-            split_performance = self.score_tuner.evaluate(vocab_y.iloc[test_doc_indices], inferred_scores_df)
+        for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y"]):
+            logging.info("EVAL: Initializing new RelevanceSearchService")
+            eval_service = RelevanceSearchService()
 
-            logging.info("Performance of this split in system performance evaluation: %s" % split_performance)
+            train_docs_df = docs_df.iloc[train_doc_indices]
+            test_docs_df = docs_df.iloc[test_doc_indices]
+
+            logging.info("EVAL: training service")
+            eval_service.train_on_docs(doc_ids=train_docs_df.index, doc_contents=train_docs_df["content"],
+                                       doc_headers=train_docs_df["headers"], y=train_docs_df["y"])
+
+            logging.info("EVAL: scoring")
+            test_docs_scores = eval_service.score_docs_bulk(doc_ids=test_docs_df.index,
+                                                            doc_contents=test_docs_df["content"],
+                                                            doc_headers=test_docs_df["headers"])
+            test_docs_scores["y"] = test_docs_df["y"]
+
+            logging.info("EVAL: inferred %s scores" % len(test_docs_scores))
+            test_docs_scores = test_docs_scores.append(test_docs_scores)
+
+            logging.info("EVAL: gathering stats of split service performance")
+            split_performance = eval_service.score_tuner.evaluate_trained(test_docs_df["y"], test_docs_scores)
+
+            logging.warn("EVAL: Performance of this split in system performance evaluation: %s" % split_performance)
             performance.append(split_performance)
 
-            tuned_scores_df = self.score_tuner.tune_all_scores(inferred_scores_df)
-
             # categories performance analysis
-            categories_fscore_betas = self.score_tuner.beta_for_categories_provider(vocab_y)
-            split_cats_performance = pd.Series(self.model_categories, index=cats_performance.columns).apply(
-                lambda cat_label: self.score_tuner.f_score_for_category(vocab_y,
-                                                                        tuned_scores_df[cat_label],
-                                                                        cat_label,
-                                                                        target_search_threshold,
-                                                                        categories_fscore_betas[cat_label]))
+            categories_fscore_betas = eval_service.score_tuner.beta_for_categories_provider(train_docs_df["y"])
+            split_cats_performance = pd.Series(content_categories, index=content_categories).apply(
+                lambda cat_label: eval_service.score_tuner.f_score_for_category(test_docs_df["y"],
+                                                                                test_docs_scores[cat_label],
+                                                                                cat_label,
+                                                                                target_search_threshold,
+                                                                                categories_fscore_betas[cat_label]))
 
             logging.info("Categories performance of this split on threshold %s: \n%s" % (target_search_threshold,
                                                                                          split_cats_performance))
             cats_performance.loc[len(cats_performance)] = split_cats_performance
 
+        # evaluate the inferred scores
         logging.info("Overall performance results of search with separate threshold: %s:" % target_search_threshold)
         logging.info("Splits performance: \n%s" % performance)
         logging.info("Splits mean performance: \n%s" % np.mean(performance))
@@ -323,7 +372,3 @@ class RelevanceSearchService:
         self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow(),
                                                   "mean_performance": np.mean(performance),
                                                   "categories_mean_performance": cats_performance.apply(np.mean, axis=0)}
-
-    def evaluate_performance_eval_set(self, folds=5, target_search_threshold=0.5):
-        # TODO: merge search_service_cv_test to self.evaluate_performance
-        pass

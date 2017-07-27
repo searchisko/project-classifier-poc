@@ -27,11 +27,12 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/service_persisted_cv_split_wout_none"
+    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/trained_service_prod"
     service_meta = dict()
     minimized_persistence = True
 
     # debug global vars
+    # might be independently pickled after training to further examine
     train_scores_df = None
 
     def __init__(self, default_dir=None):

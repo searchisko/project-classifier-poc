@@ -13,7 +13,9 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 generic_error_message = "See https://github.com/searchisko/project-classifier-poc README for documentation."
 
-score_service_instance = RelevanceSearchService()
+# TODO: set relative path to the trained image here,
+# or set an absolute path to score_service_instance.service_image_dir
+score_service_instance = RelevanceSearchService(image_dir="trained_service_prod_copy")
 
 
 def _object_from_scores(doc_scores, scores_categories):

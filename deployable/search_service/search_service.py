@@ -27,7 +27,8 @@ class RelevanceSearchService:
     score_tuner = None
     trained = False
     classifier_name = "logistic_regression.mod"
-    default_model_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))+"/trained_service_prod"
+    service_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
+    service_image_dir = service_dir + "/" + "trained_service_prod"
     service_meta = dict()
     minimized_persistence = True
 
@@ -35,9 +36,9 @@ class RelevanceSearchService:
     # might be independently pickled after training to further examine
     train_scores_df = None
 
-    def __init__(self, default_dir=None):
-        if default_dir is not None:
-            self.default_model_dir = default_dir
+    def __init__(self, image_dir=None):
+        if image_dir is not None:
+            self.service_image_dir = self.service_dir + "/" + image_dir
 
         self.service_meta["init_timestamp"] = datetime.datetime.utcnow()
 
@@ -147,7 +148,7 @@ class RelevanceSearchService:
     """
     Train all required system models on a content in a given train_content_dir folder.
     The folder should contain categories' content in csv-formed files <category>_content.csv.
-    The files should hold the structure as produced by downloader_automata.py
+    The files should hold the structure as produced by products_downloader.py
     """
     def train(self, train_content_dir):
         # init d2v_wrapper with categorized documents
@@ -167,7 +168,10 @@ class RelevanceSearchService:
         logging.info("Model training finished")
         self.service_meta["model_train_src"] = train_content_dir
 
-    def persist_trained_model(self, persist_dir=default_model_dir):
+    def persist_trained_model(self, persist_dir=None):
+        if persist_dir is None:
+            persist_dir = self.service_image_dir
+
         if self.service_meta["model_train_src"] is None:
             logging.error("Service models have not been trained yet. Run self.train(train_content_path) first")
 
@@ -194,7 +198,10 @@ class RelevanceSearchService:
 
     """load previously trained model from the persist_dir"""
 
-    def load_trained_model(self, persist_dir=default_model_dir):
+    def load_trained_model(self, persist_dir=None):
+        if persist_dir is None:
+            persist_dir = self.service_image_dir
+
         if self.service_meta["model_train_src"] is not None:
             logging.warn("Overriding the loaded model from %s" % self.service_meta["model_train_src"])
 
@@ -221,15 +228,15 @@ class RelevanceSearchService:
     Scores previously unseen single doc towards categories of train_content
     """
 
-    def score_doc(self, doc_id, doc_header, doc_content):
-        return self.score_docs_bulk([doc_id], [doc_header], [doc_content])
+    def score_doc(self, doc_id, doc_header, doc_content, preprocess_method=parsing.preprocess_text):
+        return self.score_docs_bulk([doc_id], [doc_header], [doc_content], preprocess_method=preprocess_method)
 
     """
     Scores an iterable of docs of headers, content and unique ids in bulk.
     Faster than calling score_doc for each document
     """
 
-    def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
+    def score_docs_bulk(self, doc_ids, doc_headers, doc_contents, preprocess_method=parsing.preprocess_text):
         logging.info("Requested docs: %s for scoring" % np.array(doc_ids))
 
         doc_ids = pd.Series(doc_ids)
@@ -238,19 +245,20 @@ class RelevanceSearchService:
             raise ValueError("doc_ids parameter must contain unique values to further specifically identify docs.")
 
         if not all([self.d2v_wrapper, self.vector_classifier, self.score_tuner]):
-            logging.warning("First service call. Will try to load model from self.default_model_dir")
+            logging.warning("First service call. Will try to load model from self.service_image_dir")
             try:
                 self.load_trained_model()
             except IOError:
                 raise UserWarning(
-                        "Depended models not found in self.default_model_dir = %s."
+                        "Depended models not found in self.service_image_dir = %s."
                         "Please train and export the model to the given directory "
-                        "so it can be loaded at first score request" % self.default_model_dir)
+                        "so it can be loaded at first score request" % self.service_image_dir)
 
         # preprocess content
         logging.info("Docs %s: preprocessing" % np.array(doc_ids))
         doc_objects_series = pd.Series(data=parsing.tagged_docs_from_plaintext(doc_contents, doc_headers,
-                                                                       pd.Series([None] * len(doc_ids))))
+                                                                               pd.Series([None] * len(doc_ids)),
+                                                                               preprocess_method=preprocess_method))
         # vectorize content
         logging.info("Docs %s: vectorizing using trained Doc2Vec model" % np.array(doc_ids))
         new_docs_vectors = self.d2v_wrapper.infer_content_vectors(docs=doc_objects_series)

@@ -3,13 +3,14 @@
 # https://arxiv.org/pdf/1504.07295.pdf
 # https://arxiv.org/pdf/1405.4053v2.pdf
 
-from gensim.models import Word2Vec
 import multiprocessing
-import pandas as pd
-import numpy as np
 from copy import deepcopy
 
-import common.parsing_utils as parsing
+import numpy as np
+import pandas as pd
+from gensim.models import Word2Vec
+
+import analyses.lab.common.parsing_utils as parsing
 
 
 class W2VWrapper:

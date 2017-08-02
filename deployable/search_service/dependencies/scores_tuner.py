@@ -137,7 +137,7 @@ class ScoreTuner:
     """
     D:1)
     Transforms the given scores of a particular category, according to its pre-trained optimal threshold.
-    See score classifiers/model/cat_score_viewer for visualization
+    See score analyses/model/cat_score_viewer for visualization
     Expects series of probs, scalar of original_cat_threshold
     """
     @staticmethod

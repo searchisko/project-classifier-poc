@@ -28,7 +28,7 @@ trained_service.persist_trained_model(persist_dir="training/new_image_dir")
 ```
 
 Note that the train and evaluation routine might take several hours on tens of thousands of documents.
-See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/technical_docs) for details.
+See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/technical_docs) for details.
 
 ### Training on other data sources
 The system can be trained on own set of documents in a specified format, and of arbitrary categories.

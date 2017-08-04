@@ -19,7 +19,7 @@ where {relative_path} is relative to the service instance directory.
 
 To make this change effective in the deployed instance,
 make the according modification in Django's 
-[views.py](https://github.com/searchisko/project-classifier-poc/blob/master/django_deploy/search_service/views.py).
+[views.py](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service/views.py).
 
 #### Pre-trained image
 
@@ -35,12 +35,12 @@ The image contains the models of scoring tuner, Gensim's doc2vec models, and skl
 These modules can be potentially independently trained and seamlessly changed in the image directory, 
 however it is not the common use case.
 
-See the [training](https://github.com/searchisko/project-classifier-poc/blob/master/django_deploy/search_service/training) 
+See the [training](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service/training) 
 section on how to create a new image of trained Service instance from the selected content.
 
 ## Deployment
 After the service is correctly linked to the trained image in 
-[views.py](https://github.com/searchisko/project-classifier-poc/blob/master/django_deploy/search_service/views.py)
+[views.py](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service/views.py)
 and we have installed all the dependent libraries using ``pip install -r requirements.txt``,
 we are ready to set up the servlet:
  

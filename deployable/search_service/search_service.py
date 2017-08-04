@@ -159,10 +159,10 @@ class RelevanceSearchService:
 
         doc_vectors, y = self._train_d2v_wrapper()
 
-        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
-
         # scores tuning
         self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
+
+        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
 
         self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow()
         logging.info("Model training finished")
@@ -323,7 +323,8 @@ class RelevanceSearchService:
         # split the content into selected (train/dev)/eval pieces and gather the documents scores
         # inferred from the service trained on distinct content
 
-        performance = []
+        pos_performance = []
+        neg_performance = []
         cats_performance = pd.DataFrame(columns=content_categories)
         # collecting statistics of categories performance based on the system scoring
 
@@ -353,10 +354,18 @@ class RelevanceSearchService:
             test_docs_scores = test_docs_scores.append(test_docs_scores)
 
             logging.info("EVAL: gathering stats of split service performance")
-            split_performance = eval_service.score_tuner.evaluate_trained(test_docs_df["y"], test_docs_scores)
+            positive_split_perf = eval_service.score_tuner.evaluate_trained(test_docs_df["y"], test_docs_scores)
 
-            logging.warn("EVAL: Performance of this split in system performance evaluation: %s" % split_performance)
-            performance.append(split_performance)
+            negative_split_perf = eval_service.score_tuner.evaluate_trained_negative_sampling(test_docs_df["y"],
+                                                                                              test_docs_scores)
+
+            logging.warn("EVAL: Positive erformance of this split in system performance evaluation: %s" %
+                         positive_split_perf)
+            logging.warn("EVAL: Negative erformance of this split in system performance evaluation: %s" %
+                         negative_split_perf)
+
+            pos_performance.append(positive_split_perf)
+            neg_performance.append(negative_split_perf)
 
             # categories performance analysis
             categories_fscore_betas = eval_service.score_tuner.beta_for_categories_provider(train_docs_df["y"])
@@ -373,11 +382,13 @@ class RelevanceSearchService:
 
         # evaluate the inferred scores
         logging.info("Overall performance results of search with separate threshold: %s:" % target_search_threshold)
-        logging.info("Splits performance: \n%s" % performance)
-        logging.info("Splits mean performance: \n%s" % np.mean(performance))
+        logging.info("Splits performance: \n%s" % pos_performance)
+        logging.info("Splits mean positive performance: \n%s" % np.mean(pos_performance))
+        logging.info("Splits mean negative performance: \n%s" % np.mean(neg_performance))
         logging.info("Categories splits performance: \n%s" % cats_performance)
         logging.info("Categories mean performance: \n%s" % cats_performance.apply(np.mean, axis=0))
 
         self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow(),
-                                                  "mean_performance": np.mean(performance),
+                                                  "mean_positive_performance": np.mean(pos_performance),
+                                                  "mean_negative_performance": np.mean(neg_performance),
                                                   "categories_mean_performance": cats_performance.apply(np.mean, axis=0)}

@@ -199,28 +199,31 @@ class D2VWrapper:
 
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
-    def infer_content_vectors(self, docs):
+    def infer_content_vectors(self, docs, infer_cycles=10):
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
-        logging.info("Inferring vectors of %s documents" % len(docs))
-        # TODO: parallelization by pooling is not sustainable - processes supposedly for each doc - needs batching
+        # TODO: parallelization by pooling is not sustainable - needs batching
         # content_vectors = self.infer_vectors_parallel(docs)
-        content_vectors = self._infer_vectors_non_parallel(docs)
 
-        # header vectors inference
-        logging.info("Inferring vectors of %s headers" % len(header_docs))
-        # header_vectors = self.infer_vectors_parallel(header_docs)
-        header_vectors = self._infer_vectors_non_parallel(header_docs)
+        # collect the docs vectors in <infer_cycles> inference repetitions and average the results
+        doc_vectors = np.zeros((len(docs), self.base_doc2vec_model.vector_size*2, infer_cycles))
+        for infer_i in range(infer_cycles):
+            logging.info("Inferring vectors of %s documents in %s/%s cycle" % (len(docs), infer_i, infer_cycles))
+            doc_vectors[:, :self.base_doc2vec_model.vector_size, infer_i] = self._infer_vectors_non_parallel(docs)
+            # header vectors inference
+            logging.info("Inferring vectors of %s headers in %s/%s cycle" % (len(header_docs), infer_i, infer_cycles))
+            doc_vectors[:, self.base_doc2vec_model.vector_size:, infer_i] = self._infer_vectors_non_parallel(header_docs)
 
-        content_vectors_df = pd.DataFrame(content_vectors)
-        header_vectors_df = pd.DataFrame(header_vectors)
-        new_inferred_vectors = pd.concat([content_vectors_df, header_vectors_df], axis=1)
+        # average the <infer_cycles> inferences
+        doc_vectors_avgs = doc_vectors.mean(axis=2)
+
+        doc_vectors_df = pd.DataFrame(doc_vectors_avgs)
 
         # rename vector columns incrementally - columns are required tu have unique id by NN classifier
-        new_inferred_vectors.columns = np.arange(len(new_inferred_vectors.columns))
+        doc_vectors_df.columns = np.arange(len(doc_vectors_df.columns))
 
-        return new_inferred_vectors
+        return doc_vectors_df
 
     def get_doc_content(self, index, word_split=False):
         if word_split:

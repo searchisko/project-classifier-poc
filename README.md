@@ -47,13 +47,13 @@ providing tools for convenient bulk download of the indexed content (of **DCP** 
 categorized to the Red Hat products.
 
 In addition to that, the project contains the 
-[analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/lab) 
+[analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab) 
 that has driven the best selection of the classifiers and configuration of the system parameters.
 
 The overview and the rough evaluation of the system are presented in both 
-[technical](https://github.com/searchisko/project-classifier-poc/tree/master/lab/slides/overview_presentation_nlp.pdf)
+[technical](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/overview_presentation_nlp.pdf)
 and 
-[promotional](https://github.com/searchisko/project-classifier-poc/tree/master/lab/slides/ML_for_RHD.pdf)
+[promotional](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/ML_for_RHD.pdf)
 presentations.
 
 If you're mostly interested in technical part of the project, also reach out for the 
@@ -61,6 +61,6 @@ If you're mostly interested in technical part of the project, also reach out for
 of the service.
 
 Various further evaluation of the current system by some more tricky metrics are summed up in the most
-[current analyses](https://github.com/searchisko/project-classifier-poc/tree/master/lab/score_tuning_analysis_standalone-none_incl.ipynb).
+[current analyses](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb).
 
 The overall progress and objectives are tracked [here](https://issues.jboss.org/browse/RHDENG-1111).

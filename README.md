@@ -1,21 +1,22 @@
-# Content relevance scorer for RH products
+# Relevance scorer for RH products
 
-A system able to estimate the relevance of an arbitrary content towards the learned categories.
+A system able to estimate the **relevance of an arbitrary content** towards the learned categories.
 
-The system is able to score the unseen document by its content 
-(and potentially other attributes) based on its similarity to the seen ones.
-It also provides the matching scoring mechanism enabling the potentially relevant content 
-to be included in search results for trained categories.
+The system is able to **score** the unseen document by its content 
+(and potentially other attributes) based on its **contextual similarity** to the seen ones.
+It also contains the **score tuning** mechanism enabling the direct use of the documents' relevance scores 
+by a **search engine** filtering the relevant/irrelevant results by a single fixed threshold and easily
+reaching the optimal performance.
 
 The system will be integrated into RH 
 [content search services](https://developers.redhat.com/resources) using DCP. 
 
-It might also be further extended to provide a smart content-based recommender system for web portals 
+It might also be further extended to provide a smart **content-based recommender system** for web portals 
 with sufficient amount of training documents (regardless of categorization).
 
-The project contains two main components:
+The project currently contains two **main components**:
 
-1. [Deployable service](https://github.com/searchisko/project-classifier-poc/tree/master/deployable) 
+1. **[Deployable search service](https://github.com/searchisko/project-classifier-poc/tree/master/deployable)**
 providing intuitive REST API for scoring an arbitrary content towards the trained categories:
 
 Request:
@@ -42,25 +43,25 @@ Response:
 }
 ```
 
-2. [Content downloader](https://github.com/searchisko/project-classifier-poc/tree/master/data)
+2. **[Content downloader](https://github.com/searchisko/project-classifier-poc/tree/master/data)**
 providing tools for convenient bulk download of the indexed content (of **DCP** and **access.redhat**)
 categorized to the Red Hat products.
 
 In addition to that, the project contains the 
 [analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab) 
-that has driven the best selection of the classifiers and configuration of the system parameters.
+that has driven the selection of the classifier and configuration of the system parameters.
 
-The overview and the rough evaluation of the system are presented in both 
+The overview and the rough evaluation of the system are presented in slightly 
 [technical](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/overview_presentation_nlp.pdf)
 and 
 [promotional](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/ML_for_RHD.pdf)
 presentations.
 
-If you're mostly interested in technical part of the project, also reach out for the 
-[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/technical_docs)
-of the service.
+If you're interested in **technical background of the project**, try to understand the 
+**[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/technical_docs)**
+of the system.
 
 Various further evaluation of the current system by some more tricky metrics are summed up in the most
-[current analyses](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb).
+[fresh analysis](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb).
 
-The overall progress and objectives are tracked [here](https://issues.jboss.org/browse/RHDENG-1111).
+The overall progress and objectives of the project are tracked [here](https://issues.jboss.org/browse/RHDENG-1111).

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
 
-import analyses.lab.common.parsing_utils as parsing
+import analyses.lab.dependencies.common.parsing_utils as parsing
 
 
 class W2VWrapper:

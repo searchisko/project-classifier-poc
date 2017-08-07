@@ -57,7 +57,7 @@ class RelevanceSearchService:
         self.d2v_wrapper = D2VWrapper(vector_length=800)
 
     @staticmethod
-    def _get_classifier_instance():
+    def get_classifier_instance():
         return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
                                   n_jobs=multiprocessing.cpu_count(), max_iter=1000)
 
@@ -75,10 +75,10 @@ class RelevanceSearchService:
 
         strat_kfold = StratifiedKFold(n_splits=splits, shuffle=True)
         logging.info("Gathering training content scores as infered by a classifier %s in %s splits"
-                     % (str(self._get_classifier_instance().__class__()), splits))
+                     % (str(self.get_classifier_instance().__class__()), splits))
 
         for train_doc_indices, test_doc_indices in strat_kfold.split(doc_vectors, y):
-            split_vector_classifier = self._get_classifier_instance()
+            split_vector_classifier = self.get_classifier_instance()
             logging.info("Fitting split classifier")
             split_vector_classifier.fit(doc_vectors.iloc[train_doc_indices], y.iloc[train_doc_indices])
             logging.info("Predicting split probs")
@@ -103,7 +103,7 @@ class RelevanceSearchService:
 
     def _train_vector_classifier(self, X, y, classifier=None):
         if classifier is None:
-            classifier = self._get_classifier_instance()
+            classifier = self.get_classifier_instance()
         # superior classifier training
         logging.info("Fitting classifier on %s docs vectors" % len(X))
         classifier.fit(X, y)

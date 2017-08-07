@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
-import scores_tuner
+from analyses.lab.dependencies import scores_tuner
 from doc2vec_wrapper import D2VWrapper
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.WARN)
 

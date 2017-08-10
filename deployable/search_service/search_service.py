@@ -129,7 +129,7 @@ class ScoringService:
     TODO: set epochs
     :param epochs: number of cycles that the shuffled list of train documents is passed to doc2vec training algorithm
     """
-    def _train_d2v_wrapper(self, epochs=10):
+    def _train_d2v_wrapper(self, epochs=1):
         # train d2v model and infer docs vectors to train the superior classifier
         self.d2v_wrapper.train_model(epochs=epochs)
 
@@ -373,7 +373,7 @@ class ScoringService:
 
         for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y"]):
             logging.info("EVAL: Initializing new ScoringService")
-            eval_service = ScoringService()
+            eval_service = ScoringService(preprocessing=self.preprocess_method)
 
             train_docs_df = docs_df.iloc[train_doc_indices]
             test_docs_df = docs_df.iloc[test_doc_indices]

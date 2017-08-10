@@ -3,12 +3,13 @@ import numpy as np
 
 from text_preprocess import preprocess_text
 
+from os import listdir
+from os.path import isfile, join
+
 from categorized_document import CategorizedDocument
-# from collections import namedtuple
-# CategorizedDocument = namedtuple('CategorizedDocument', 'words tags category_expected header_words')
 
 import logging
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 
 # split tokenized text into all_sentences
@@ -90,7 +91,7 @@ def tagged_docs_from_content(content_series, content_headers, labels):
     content_df_with_index = pd.DataFrame(data={"content": content_series})
     content_df_with_index["index"] = np.arange(len(content_series))
     content_df_with_index["header"] = content_headers
-    logging.info("Initializing %s CategorizedDocuments" % len(content_df_with_index["index"]))
+    logging.debug("Initializing %s CategorizedDocuments" % len(content_df_with_index["index"]))
 
     return content_df_with_index.apply(lambda row: CategorizedDocument(row["content"],
                                                                        [row["index"]],
@@ -124,7 +125,7 @@ def parse_header_docs(full_docs):
                                                                     full_doc.category_expected,
                                                                     None))
 
-    logging.info("Initialized %s headers of %s for vectorization" % (len(out_docs), len(full_docs)))
+    logging.debug("Initialized %s headers of %s for vectorization" % (len(out_docs), len(full_docs)))
     return out_docs
 
 
@@ -134,13 +135,20 @@ def content_from_words(word_list):
     return reduce(lambda x, y: "%s %s" % (x, y), word_list) + "."
 
 
-def get_content_as_dataframe(content_basepath, basepath_suffix, content_categories):
-    # retrieve all content of all given categories
+def get_content_as_dataframe(content_basepath, basepath_suffix="_content.csv"):
+    # initializes the vocabulary by the given categories (content_categories)
+    # in the given directory (train_dir)
+    content_categories = scan_directory_for_categories(content_basepath, basepath_suffix)
+
     all_content = pd.DataFrame(
         columns="sys_title,sys_description,source,sys_content_plaintext,target".split(","))
+
+    # retrieve all content of all given categories
     for cat_label in content_categories:
-        new_content = pd.read_csv("%s/%s%s" % (content_basepath, cat_label, basepath_suffix),
-                                  na_filter=False, error_bad_lines=False)
+        filepath = "%s/%s%s" % (content_basepath, cat_label, basepath_suffix)
+        logging.info("Loading %s" % filepath)
+
+        new_content = pd.read_csv(filepath, na_filter=False, error_bad_lines=False)
         all_content = all_content.append(new_content, ignore_index=True)
 
     return all_content
@@ -152,3 +160,8 @@ def drop_duplicate_docs(docs_series):
     docs_df["content"] = docs_series.apply(lambda doc: doc.words).apply(str).apply(hash)
 
     return docs_series[~docs_df.duplicated()]
+
+
+def scan_directory_for_categories(train_dir, train_files_suffix="_content.csv"):
+    dir_files = [f for f in listdir(train_dir) if isfile(join(train_dir, f))]
+    return map(lambda dir_file_path: dir_file_path.replace(train_dir, "").replace(train_files_suffix, ""), dir_files)

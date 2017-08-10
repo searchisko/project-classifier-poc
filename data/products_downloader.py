@@ -8,9 +8,20 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 downloader_instances = [AccessDownloader, SearchiskoDownloader, StackOverflowDownloader]
 
-output_path = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/playground/auto/stem/"
+output_path = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/no_preproc_test/"
 
 csv_sep = ","
+
+
+# http://stackoverflow.com/questions/20078816/replace-non-ascii-characters-with-a-single-space
+def replace_non_ascii(str):
+    return ''.join([i if ord(i) < 128 else ' ' for i in str])
+
+
+# used to drop the blank lines in the content that destroy the csv format
+def preprocessing_f(text):
+    text_cleared = replace_non_ascii(text).replace('"', "")
+    return " ".join(text_cleared.split())
 
 
 def download(download_dir):
@@ -31,7 +42,8 @@ def download(download_dir):
             for downloader_class in downloader_instances:
                 logging.info("Using %s downloader" % downloader_class)
 
-                downloader = downloader_class(project=category, csv_sep=csv_sep, drop_stemming=True)
+                downloader = downloader_class(project=category, csv_sep=csv_sep,
+                                              drop_stemming=True, preprocessor=preprocessing_f)
                 # use .download_and_parse(sample=60) param to limit content for content format testing
                 download_generator = downloader.download_and_parse()
                 for line in download_generator:

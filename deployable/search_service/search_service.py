@@ -1,34 +1,34 @@
-import os
-from os import listdir
-from os.path import isfile, join
-
+import datetime
 import logging
 import multiprocessing
-import datetime
+import os
 
+import numpy as np
+import pandas as pd
+from sklearn.externals import joblib
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
-from sklearn.externals import joblib
 
-import pandas as pd
-import numpy as np
-
+from dependencies import parsing_utils as parsing
 from dependencies.doc2vec_wrapper import D2VWrapper
 from dependencies.scores_tuner import ScoreTuner
-from dependencies import parsing_utils as parsing
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 
-class RelevanceSearchService:
+class ScoringService:
     model_categories = None
+
     d2v_wrapper = None
     vector_classifier = None
     score_tuner = None
+
     trained = False
+
     classifier_name = "logistic_regression.mod"
     service_dir = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
     service_image_dir = service_dir + "/" + "trained_service_prod"
+
     service_meta = dict()
     minimized_persistence = True
 
@@ -36,11 +36,14 @@ class RelevanceSearchService:
     # might be independently pickled after training to further examine
     train_scores_df = None
 
-    def __init__(self, image_dir=None):
+    """
+    The service can be initialized with the image directory relative to the service directory.
+    """
+    def __init__(self, image_dir=None, preprocessing=parsing.preprocess_text):
         if image_dir is not None:
             self.service_image_dir = self.service_dir + "/" + image_dir
 
-        self.service_meta["init_timestamp"] = datetime.datetime.utcnow()
+        self.service_meta["init_timestamp"] = datetime.datetime.utcnow().isoformat()
 
         self.service_meta["model_reload_dir"] = None
         self.service_meta["model_reload_timestamp"] = None
@@ -56,6 +59,11 @@ class RelevanceSearchService:
 
         self.d2v_wrapper = D2VWrapper(vector_length=800)
 
+        self.preprocess_method = preprocessing
+
+    """
+    Provider of the classifier to be used for scores tuning, newly-inferred vectors scoring and service evaluation.
+    """
     @staticmethod
     def get_classifier_instance():
         return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
@@ -68,14 +76,14 @@ class RelevanceSearchService:
     using the predict_proba of a classifier trained on other 9/10 of content
     """
 
-    def _score_train_content(self, doc_vectors, y):
+    def _score_train_content(self, doc_vectors, y, inference_folds):
         docs_scores = pd.DataFrame(columns=self.model_categories)
-        # TODO: set splits
-        splits = 5
 
-        strat_kfold = StratifiedKFold(n_splits=splits, shuffle=True)
+        # note that the more splits cause the more sensitive content scoring
+        # though will take longer inference time linearly
+        strat_kfold = StratifiedKFold(n_splits=inference_folds, shuffle=True)
         logging.info("Gathering training content scores as infered by a classifier %s in %s splits"
-                     % (str(self.get_classifier_instance().__class__()), splits))
+                     % (str(self.get_classifier_instance().__class__()), inference_folds))
 
         for train_doc_indices, test_doc_indices in strat_kfold.split(doc_vectors, y):
             split_vector_classifier = self.get_classifier_instance()
@@ -93,14 +101,19 @@ class RelevanceSearchService:
     """
     Optimize the categories thresholds of score_tuner to maximize the combined categories' f-score
     to be used for score tuning on a new content requested to be scored.
+    TODO: set inference_folds
+    :param inference_folds: sensitivity of the scores inference strategy (=number of inference CV folds)
     """
-    def _train_score_tuner(self, doc_vectors, y, score_tuner):
-        self.train_scores_df = self._score_train_content(doc_vectors, y)
+    def _train_score_tuner(self, doc_vectors, y, score_tuner, inference_folds=5):
+        self.train_scores_df = self._score_train_content(doc_vectors, y, inference_folds=inference_folds)
         self.train_scores_df["y"] = y
         score_tuner.train_categories_thresholds(y, self.train_scores_df)
         logging.info("Score tuner trained")
         return score_tuner
 
+    """
+    Trains the classifier provided by get_classifier_instance() on the inferred vectors of documents.
+    """
     def _train_vector_classifier(self, X, y, classifier=None):
         if classifier is None:
             classifier = self.get_classifier_instance()
@@ -111,12 +124,14 @@ class RelevanceSearchService:
         logging.info("Model %s fitted" % classifier.__class__)
         return classifier
 
-    def _train_d2v_wrapper(self):
-        # categories are inferred by target directory containment in vocab init of d2v
-        self.model_categories = self.d2v_wrapper.content_categories
-        # train d2v model, infer docs vectors and train adjacent classifier
-        # TODO set epochs
-        self.d2v_wrapper.train_model(epochs=10)
+    """
+    Trains the doc2vec model on the documents passed on vocabulary initialization.
+    TODO: set epochs
+    :param epochs: number of cycles that the shuffled list of train documents is passed to doc2vec training algorithm
+    """
+    def _train_d2v_wrapper(self, epochs=10):
+        # train d2v model and infer docs vectors to train the superior classifier
+        self.d2v_wrapper.train_model(epochs=epochs)
 
         doc_vectors_labeled = self.d2v_wrapper.infer_vocab_content_vectors()
         doc_vectors = doc_vectors_labeled.iloc[:, :-1]
@@ -124,25 +139,46 @@ class RelevanceSearchService:
 
         return doc_vectors, y
 
-    """TODO"""
+    """
+    After initializing the train documents of Doc2VecWrapper, the vectors can be inferred
+    and the modules trained on the inferred vectors.
+    """
+    def _train_modules(self):
+        # doc2vec training on vocabulary documents and inference of the documents' vectors
+        doc_vectors, y = self._train_d2v_wrapper()
+        # scores tuner
+        self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
+        # master classifier
+        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
+
+        self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow().isoformat()
+        self.trained = True
+        logging.info("modules training finished")
+
+    """
+    The service can be as well trained on a list of documents represented as a list of ids,
+    header contents and documents' body contents with matching indices.
+    Used in evaluation.
+    """
     def train_on_docs(self, doc_ids, doc_headers, doc_contents, y):
-        doc_contents = pd.Series(doc_contents)
         doc_headers = pd.Series(doc_headers)
+        doc_contents = pd.Series(doc_contents)
         y = pd.Series(y)
+
+        self.model_categories = y.unique()
+
+        # text pre-processing using the given processing method
+        doc_headers_preproc = doc_headers.apply(self.preprocess_method)
+        doc_contents_preproc = doc_contents.apply(self.preprocess_method)
 
         logging.info("Training service on docs: %s" % np.array(doc_ids))
 
-        training_docs_objects = parsing.tagged_docs_from_plaintext(doc_contents, doc_headers, y)
+        training_docs_objects = parsing.tagged_docs_from_plaintext(doc_contents_preproc, doc_headers_preproc, y)
         self.d2v_wrapper.init_vocab_from_docs(training_docs_objects)
 
-        doc_vectors, y = self._train_d2v_wrapper()
-        doc_vectors.index = y.index
+        # modules training on the documents of doc2vec vocabulary
+        self._train_modules()
 
-        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
-        self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
-
-        self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow()
-        logging.info("Model training finished")
         self.service_meta["model_train_src"] = "%s docs, %s categories" % (len(doc_ids), len(np.unique(y)))
 
     """
@@ -152,20 +188,22 @@ class RelevanceSearchService:
     """
     def train(self, train_content_dir):
         # init d2v_wrapper with categorized documents
-        self.service_meta["model_train_start_timestamp"] = datetime.datetime.utcnow()
+        self.service_meta["model_train_start_timestamp"] = datetime.datetime.utcnow().isoformat()
 
-        self.d2v_wrapper.init_model_vocab(content_basepath=train_content_dir,
-                                          drop_short_docs=10)
+        training_content_df = parsing.get_content_as_dataframe(train_content_dir)
 
-        doc_vectors, y = self._train_d2v_wrapper()
+        self.model_categories = training_content_df["target"].unique()
 
-        # scores tuning
-        self.score_tuner = self._train_score_tuner(doc_vectors, y, ScoreTuner())
+        # pre-process the selected columns of input csv in pre-defined format, using the given processing function
+        logging.info("Preprocessing %s documents using %s function" % (len(training_content_df), self.preprocess_method))
+        training_content_df[["sys_title", "sys_description", "sys_content_plaintext"]] = \
+            training_content_df[["sys_title", "sys_description", "sys_content_plaintext"]].applymap(self.preprocess_method)
 
-        self.vector_classifier = self._train_vector_classifier(doc_vectors, y)
+        self.d2v_wrapper.init_model_vocab(train_content_df=training_content_df, drop_short_docs=10)
 
-        self.service_meta["model_train_end_timestamp"] = datetime.datetime.utcnow()
-        logging.info("Model training finished")
+        # modules training on the documents of doc2vec vocabulary
+        self._train_modules()
+
         self.service_meta["model_train_src"] = train_content_dir
 
     def persist_trained_model(self, persist_dir=None):
@@ -190,7 +228,7 @@ class RelevanceSearchService:
         joblib.dump(self.score_tuner, tuner_path)
 
         self.service_meta["model_persist_dir"] = persist_dir
-        self.service_meta["model_persist_timestamp"] = datetime.datetime.utcnow()
+        self.service_meta["model_persist_timestamp"] = datetime.datetime.utcnow().isoformat()
 
         meta_path = persist_dir + "/metadata.mod"
         logging.info("Pickling model metadata to %s" % meta_path)
@@ -222,21 +260,26 @@ class RelevanceSearchService:
         self.service_meta = joblib.load(meta_path)
 
         self.service_meta["model_reload_dir"] = persist_dir
-        self.service_meta["model_reload_timestamp"] = datetime.datetime.utcnow()
+        self.service_meta["model_reload_timestamp"] = datetime.datetime.utcnow().isoformat()
+
+        logging.info("Service loaded")
+        logging.info("Service meta: \n%s" % self.service_meta)
+        logging.info("Service score tuner optimal thresholds: \n%s" % self.score_tuner.cats_original_thresholds)
+        logging.info("Service score tuner cats target betas interval: %s" % self.score_tuner.target_beta_scaling)
 
     """
     Scores previously unseen single doc towards categories of train_content
     """
 
-    def score_doc(self, doc_id, doc_header, doc_content, preprocess_method=parsing.preprocess_text):
-        return self.score_docs_bulk([doc_id], [doc_header], [doc_content], preprocess_method=preprocess_method)
+    def score_doc(self, doc_id, doc_header, doc_content):
+        return self.score_docs_bulk([doc_id], [doc_header], [doc_content])
 
     """
     Scores an iterable of docs of headers, content and unique ids in bulk.
     Faster than calling score_doc for each document
     """
 
-    def score_docs_bulk(self, doc_ids, doc_headers, doc_contents, preprocess_method=parsing.preprocess_text):
+    def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
         logging.info("Requested docs: %s for scoring" % np.array(doc_ids))
 
         doc_ids = pd.Series(doc_ids)
@@ -258,7 +301,7 @@ class RelevanceSearchService:
         logging.info("Docs %s: preprocessing" % np.array(doc_ids))
         doc_objects_series = pd.Series(data=parsing.tagged_docs_from_plaintext(doc_contents, doc_headers,
                                                                                pd.Series([None] * len(doc_ids)),
-                                                                               preprocess_method=preprocess_method))
+                                                                               preprocess_method=self.preprocess_method))
         # vectorize content
         logging.info("Docs %s: vectorizing using trained Doc2Vec model" % np.array(doc_ids))
         new_docs_vectors = self.d2v_wrapper.infer_content_vectors(docs=doc_objects_series)
@@ -269,9 +312,8 @@ class RelevanceSearchService:
         cats_ordered = list(self.vector_classifier.classes_)
         new_content_probs_df = pd.DataFrame(data=new_content_probs, columns=cats_ordered, index=doc_ids)
 
-        # tune categories probabilities to scores
-        logging.info("Docs %s: tuning probs according to optimized cats thresholds:\n%s"
-                     % (np.array(doc_ids), self.score_tuner.cats_original_thresholds))
+        # tune categories probabilities to relevance scores
+        logging.info("Docs %s: tuning scores" % np.array(doc_ids))
         new_content_scores_tuned = self.score_tuner.tune_new_docs_scores(new_content_probs_df)
 
         self.service_meta["score_requests_counter"] += len(doc_ids)
@@ -287,21 +329,17 @@ class RelevanceSearchService:
     The test might take tens of minutes depending on a number of folds and a size of eval data set.
     """
 
-    def evaluate_performance(self, eval_content_dir="../../data/content/prod_sample", folds=5, target_search_threshold=0.5):
+    def evaluate_performance(self, eval_content_dir, folds=3, target_search_threshold=0.5):
         logging.info("EVAL: evaluation routine started")
         logging.info("EVAL: collecting evaluation content from %s" % eval_content_dir)
 
-        basepath_suffix = "_content.csv"
         # infer the trained categories according to the files in directory
-        dir_files = [f for f in listdir(eval_content_dir) if isfile(join(eval_content_dir, f))]
-        content_categories = map(lambda dir_file_path: dir_file_path
-                                 .replace(eval_content_dir, "")
-                                 .replace(basepath_suffix, ""), dir_files)
+        content_categories = parsing.scan_directory_for_categories(eval_content_dir)
 
         logging.info("EVAL: Found %s categories to train on: %s" % (len(content_categories), np.array(content_categories)))
 
         # parse the content into dataframe
-        all_content_df = parsing.get_content_as_dataframe(eval_content_dir, basepath_suffix, content_categories).drop_duplicates()
+        all_content_df = parsing.get_content_as_dataframe(eval_content_dir).drop_duplicates()
 
         doc_content = all_content_df["sys_content_plaintext"]
         doc_headers = parsing.select_headers(all_content_df).apply(
@@ -334,8 +372,8 @@ class RelevanceSearchService:
         test_docs_scores = pd.DataFrame(columns=content_categories + ["y"])
 
         for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y"]):
-            logging.info("EVAL: Initializing new RelevanceSearchService")
-            eval_service = RelevanceSearchService()
+            logging.info("EVAL: Initializing new ScoringService")
+            eval_service = ScoringService()
 
             train_docs_df = docs_df.iloc[train_doc_indices]
             test_docs_df = docs_df.iloc[test_doc_indices]
@@ -348,20 +386,17 @@ class RelevanceSearchService:
             test_docs_scores = eval_service.score_docs_bulk(doc_ids=test_docs_df.index,
                                                             doc_contents=test_docs_df["content"],
                                                             doc_headers=test_docs_df["headers"])
-            test_docs_scores["y"] = test_docs_df["y"]
-
             logging.info("EVAL: inferred %s scores" % len(test_docs_scores))
-            test_docs_scores = test_docs_scores.append(test_docs_scores)
 
             logging.info("EVAL: gathering stats of split service performance")
             positive_split_perf = eval_service.score_tuner.evaluate_trained(test_docs_df["y"], test_docs_scores)
 
-            negative_split_perf = eval_service.score_tuner.evaluate_trained_negative_sampling(test_docs_df["y"],
-                                                                                              test_docs_scores)
+            negative_split_perf = eval_service.score_tuner.evaluate_trained_negative_sampling(
+                test_docs_df["y"], test_docs_scores[test_docs_df["y"].unique()])
 
-            logging.warn("EVAL: Positive erformance of this split in system performance evaluation: %s" %
+            logging.warn("EVAL: Positive performance of this split in system performance evaluation: %s" %
                          positive_split_perf)
-            logging.warn("EVAL: Negative erformance of this split in system performance evaluation: %s" %
+            logging.warn("EVAL: Negative performance of this split in system performance evaluation: %s" %
                          negative_split_perf)
 
             pos_performance.append(positive_split_perf)
@@ -388,7 +423,7 @@ class RelevanceSearchService:
         logging.info("Categories splits performance: \n%s" % cats_performance)
         logging.info("Categories mean performance: \n%s" % cats_performance.apply(np.mean, axis=0))
 
-        self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow(),
+        self.service_meta["model_eval_result"] = {"test_finish_time": datetime.datetime.utcnow().isoformat(),
                                                   "mean_positive_performance": np.mean(pos_performance),
                                                   "mean_negative_performance": np.mean(neg_performance),
                                                   "categories_mean_performance": cats_performance.apply(np.mean, axis=0)}

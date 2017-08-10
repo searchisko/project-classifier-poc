@@ -118,7 +118,7 @@ def preprocess_text(text, stemming=False):
     tokenized_text = ""
     if len(syntactic_units) > 1:
         for unit in syntactic_units:
-            tokenized_text += "%s." % unit.token
+            tokenized_text += "%s . " % unit.token
     if len(syntactic_units) == 1:
         tokenized_text += syntactic_units[0].token
 

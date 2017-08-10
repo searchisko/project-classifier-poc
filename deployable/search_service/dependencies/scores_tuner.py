@@ -198,7 +198,7 @@ class ScoreTuner:
 
         # normalization function - linear function mapping interval <1000, 20000> (= category size) to <5, 0.2>:
         # cats_order_by_size = pd.Series(data=cats_sizes.values.argsort(), index=cats_sizes.index)
-        log_scaled_cat_sizes = cats_sizes.apply(lambda x: 1/math.log(x, 50))
+        log_scaled_cat_sizes = cats_sizes.apply(lambda x: x+1).apply(lambda x: 1/math.log(x, 50))
 
         top_cat_size = log_scaled_cat_sizes.quantile(q=0.01)
         bottom_cat_size = log_scaled_cat_sizes.quantile(q=0.90)
@@ -290,11 +290,13 @@ class ScoreTuner:
         return self.weighted_combine_cats_predictions(y_filtered, cats_perf)
 
     """
-    Evaluates the performance of the tuned score data set on irrelevant documents contained in the scored data set
+    Evaluates the performance of the tuned score data set on irrelevant documents contained in the scored data set.
+    Returns -1 if no docs of <none_label> are provided.
     """
     @staticmethod
     def evaluate_trained_negative_sampling(y_expected, scores_df, none_label="None"):
-        neg_docs_scores_df = scores_df[y_expected == none_label]
+        neg_docs_scores_df = scores_df[y_expected == none_label][scores_df.columns]
+
         neg_docs_scores_df = neg_docs_scores_df[neg_docs_scores_df.columns[neg_docs_scores_df.columns != none_label]]
 
         all_docs = len(neg_docs_scores_df)
@@ -302,7 +304,8 @@ class ScoreTuner:
         once_retrieved_docs = np.sum(neg_docs_scores_df.apply(lambda doc_scores:
                                                               np.any(doc_scores >= general_search_threshold),
                                                               axis=1).values)
-        return once_retrieved_docs / float(all_docs)
+        # returns -1 if there were no docs of <none_label> category
+        return once_retrieved_docs / float(all_docs) if all_docs > 0 else -1
 
     """
     Testing method for standalone functionality evaluation

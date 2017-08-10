@@ -1,2 +1,0 @@
-training content has removed stopwords and numbers, persisted stemming.
-Origin: used all AccessDownloader, SearchiskoDownloader, StackOverflowDownloader

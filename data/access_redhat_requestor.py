@@ -12,6 +12,7 @@ class AccessDownloader:
 
     project_name = None
     stemming = True
+    preprocessor = None
 
     header = ["sys_title", "sys_description", "sys_content_plaintext", "source"]
 
@@ -21,10 +22,11 @@ class AccessDownloader:
                                    "sys_content_plaintext": "body",
                                    "source": "source"}
 
-    def __init__(self, project, csv_sep=",", drop_stemming=True):
+    def __init__(self, project, csv_sep=",", drop_stemming=True, preprocessor=(lambda x: x)):
         self.project_name = project
         self.sep = csv_sep
         self.stemming = drop_stemming
+        self.preprocessor = preprocessor
 
     # http://stackoverflow.com/questions/20078816/replace-non-ascii-characters-with-a-single-space
     @staticmethod
@@ -47,10 +49,9 @@ class AccessDownloader:
             for att in map(lambda header_item: self.content_specific_attributes[header_item], self.header):
                 if att in entry.keys():
                     if att == "body":
-                        processed_text_unit = preprocess_text(entry[att][0], stemming=self.stemming)
+                        processed_text = self.preprocessor(entry[att][0])
                     else:
-                        processed_text_unit = preprocess_text(entry[att], stemming=self.stemming)
-                    processed_text = self.replace_non_ascii(processed_text_unit)
+                        processed_text = self.preprocessor(entry[att])
                     line += '"%s"%s' % (processed_text, self.sep)
 
                 else:
@@ -84,7 +85,14 @@ class AccessDownloader:
             ]
 
             resp = requests.get(url=self.url, params=params)
-            new_data = json.loads(resp.text)
+            try:
+                new_data = json.loads(resp.text)
+            except ValueError:
+                logging.error("ERROR: parsing response to json: %s" % resp.text)
+                download_counter += increase
+                offset += increase
+                continue
+
             logging.info("Constructed url: %s" % resp.url)
             logging.info("Downloading %s/%s content (pulse %s)" % (download_counter + response_size,
                                                                    new_data["response"]["numFound"],

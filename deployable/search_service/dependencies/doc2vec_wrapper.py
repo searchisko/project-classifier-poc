@@ -5,9 +5,6 @@ import logging
 import random
 from copy import deepcopy
 
-from os import listdir
-from os.path import isfile, join
-
 import pandas as pd
 from gensim.models import doc2vec
 import numpy as np
@@ -24,7 +21,7 @@ import multiprocessing
 # from collections import namedtuple
 # CategorizedDocument = namedtuple('CategorizedDocument', 'words tags category_expected header_words')
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 
 def async_trigger(wrapper, wordlist):
@@ -32,10 +29,9 @@ def async_trigger(wrapper, wordlist):
 
 
 class D2VWrapper:
-    # content_categories might be set from outer scope
+
     train_content_tagged_docs = None
     docs_category_mapping = None
-    content_categories = None
     inferred_vectors = None
     header_docs = None
 
@@ -47,32 +43,30 @@ class D2VWrapper:
         if content_categories:
             self.content_categories = content_categories
 
-    def init_model_vocab(self, content_basepath, basepath_suffix="_content.csv", drop_short_docs=False):
-        # infer the trained categories according to the files in directory
-        dir_files = [f for f in listdir(content_basepath) if isfile(join(content_basepath, f))]
-        self.content_categories = map(
-            lambda dir_file_path: dir_file_path.replace(content_basepath, "").replace(basepath_suffix, ""), dir_files)
-
-        # initializes the vocabulary by the given categories (content_categories)
-        # in the given directory (content_basepath)
         assert doc2vec.FAST_VERSION > -1, "this will be painfully slow otherwise"
 
-        all_content_df = parsing.get_content_as_dataframe(content_basepath, basepath_suffix, self.content_categories)
-
+    """
+    Infers the trained categories by the files found in train_dir directory, preprocess the contents,
+    parse it to the CategorizedDocuments in format required by Gensim and
+    and initialize the doc2vec model's vocabulary with the parsed CategorizedDocuments.
+    """
+    def init_model_vocab(self, train_content_df, drop_short_docs=False):
         # fills up the mapping of document ids (index) to its original categories
         # enabling the reverse search of all_base_vocab_docs vectors for each category and subsequent classification
-        self.docs_category_mapping = pd.Series(data=all_content_df["target"])
+        self.docs_category_mapping = pd.Series(data=train_content_df["target"])
 
         # selects a text of the most relevant attributes filled for each item of dataframe
         # (in format title, desc, plaintext_content)
-        all_content_sens, _ = parsing.select_training_content(all_content_df, make_document_mapping=True, sent_split=False)
-        all_content_headers = parsing.select_headers(all_content_df)
+        logging.info("Selecting non-empty resources for CategorizedDocuments initialization")
 
-        logging.info("Loaded %s all_base_vocab_docs from %s categories" % (len(all_content_sens), len(self.content_categories)))
+        all_content_sens, _ = parsing.select_training_content(train_content_df, make_document_mapping=True, sent_split=False)
+        all_content_headers = parsing.select_headers(train_content_df)
+
+        logging.info("Initialized %s documents" % len(all_content_sens))
 
         # filter short all_base_vocab_docs from training, if required
         if drop_short_docs:
-            logging.info("Filtering all_base_vocab_docs shorter than %s tokens from vocab sample" % drop_short_docs)
+            logging.info("Filtering vocabulary docs shorter than %s tokens" % drop_short_docs)
 
             content_lens = all_content_sens.apply(lambda content: len(content))
             ok_indices = content_lens >= drop_short_docs
@@ -80,7 +74,7 @@ class D2VWrapper:
             all_content_sens = all_content_sens[ok_indices]
             self.docs_category_mapping = self.docs_category_mapping[ok_indices.values]
 
-            logging.info("%s all_base_vocab_docs included in vocab init" % self.docs_category_mapping.__len__())
+            logging.info("%s documents included in vocab init" % self.docs_category_mapping.__len__())
 
         # transform the training sentences into TaggedDocument list
         self.train_content_tagged_docs = parsing.tagged_docs_from_content(all_content_sens,
@@ -152,8 +146,6 @@ class D2VWrapper:
             logging.info("Loading all_base_vocab_docs objects")
             self.train_content_tagged_docs = joblib.load(model_save_dir + "/doc_labeling.mod")
 
-            self.content_categories = self.train_content_tagged_docs.apply(lambda doc: doc.category_expected).unique()
-
             # header content parse from base all_base_vocab_docs objects
             self.header_docs = parsing.parse_header_docs(self.train_content_tagged_docs)
 
@@ -169,7 +161,7 @@ class D2VWrapper:
                 logging.info("Returning already inferred doc vectors of %s all_base_vocab_docs" % len(self.inferred_vectors))
                 return self.inferred_vectors
 
-        logging.info("Docs vector inference started")
+        logging.info("Vocab vector inference started")
         if category is None:
             # inference with default aprams config
             # TODO: try other inference params on new inference
@@ -199,20 +191,20 @@ class D2VWrapper:
 
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
-    def infer_content_vectors(self, docs, infer_cycles=10):
+    def infer_content_vectors(self, docs, infer_cycles=5):
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
-        # TODO: parallelization by pooling is not sustainable - needs batching
+        # TODO: parallelization by pooling is not sustainable - needs batching using memory map
         # content_vectors = self.infer_vectors_parallel(docs)
 
         # collect the docs vectors in <infer_cycles> inference repetitions and average the results
         doc_vectors = np.zeros((len(docs), self.base_doc2vec_model.vector_size*2, infer_cycles))
         for infer_i in range(infer_cycles):
-            logging.info("Inferring vectors of %s documents in %s/%s cycle" % (len(docs), infer_i, infer_cycles))
+            logging.debug("Inferring vectors of %s documents in %s/%s cycle" % (len(docs), infer_i, infer_cycles))
             doc_vectors[:, :self.base_doc2vec_model.vector_size, infer_i] = self._infer_vectors_non_parallel(docs)
             # header vectors inference
-            logging.info("Inferring vectors of %s headers in %s/%s cycle" % (len(header_docs), infer_i, infer_cycles))
+            logging.debug("Inferring vectors of %s headers in %s/%s cycle" % (len(header_docs), infer_i, infer_cycles))
             doc_vectors[:, self.base_doc2vec_model.vector_size:, infer_i] = self._infer_vectors_non_parallel(header_docs)
 
         # average the <infer_cycles> inferences

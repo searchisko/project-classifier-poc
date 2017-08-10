@@ -3,7 +3,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from search_service import RelevanceSearchService
+from search_service import ScoringService
 
 from datetime import datetime
 import json
@@ -15,7 +15,7 @@ generic_error_message = "See https://github.com/searchisko/project-classifier-po
 
 # TODO: set relative path to the trained image here,
 # or set an absolute path to score_service_instance.service_image_dir
-score_service_instance = RelevanceSearchService(image_dir="trained_service_prod_copy")
+score_service_instance = ScoringService(image_dir="test_service_dir")
 
 
 def _object_from_scores(doc_scores, scores_categories):
@@ -36,9 +36,27 @@ def _verify_request(request):
     return None
 
 
+def _get_sys_meta(request_time):
+    sys_meta_object = {"response_status": "OK",
+                       "request_time": request_time,
+                       "response_time": datetime.utcnow().isoformat(),
+                       "sys_service_meta": score_service_instance.service_meta["model_train_end_timestamp"],
+                       "sys_requests_counter": score_service_instance.service_meta["score_requests_counter"],
+                       }
+    if score_service_instance.service_meta["model_eval_result"] is not None:
+        sys_meta_object["sys_negative_performance"] = \
+            score_service_instance.service_meta["model_eval_result"]["mean_negative_performance"]
+        sys_meta_object["sys_positive_performance"] = \
+            score_service_instance.service_meta["model_eval_result"]["mean_positive_performance"]
+        sys_meta_object["sys_cats_performance"] = \
+            score_service_instance.service_meta["model_eval_result"]["categories_mean_performance"].to_dict()
+
+    return sys_meta_object
+
+
 @csrf_exempt
 def score(request):
-    start_time = datetime.utcnow()
+    request_time = datetime.utcnow().isoformat()
 
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
@@ -49,7 +67,7 @@ def score(request):
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)
 
-    logging.info("POST on score(), body:\n%s" % request_json)
+    logging.debug("POST on score(), body:\n%s" % request_json)
     try:
         doc_id = request_json["doc"]["id"]
         doc_title = request_json["doc"]["title"]
@@ -64,8 +82,12 @@ def score(request):
 
     logging.info("POST: Scoring document %s: header len: %s, content len: %s"
                  % (doc_id, len(doc_title.split()), len(doc_content.split())))
+    try:
+        doc_scores = score_service_instance.score_doc(doc_id, doc_title, doc_content)
+    except Exception as e:
+        logging.error("POST: Scoring doc %s terminated the service with %s" % (doc_id, e))
+        raise
 
-    doc_scores = score_service_instance.score_doc(doc_id, doc_title, doc_content)
     scores_categories = doc_scores.columns.values
 
     scores_object = _object_from_scores(doc_scores, scores_categories)
@@ -73,13 +95,7 @@ def score(request):
 
     response_object = {"scoring": single_doc_scores}
     if sys_meta:
-        sys_meta_object = {"response_status": "OK",
-                           "request_time": start_time.isoformat(),
-                           "response_time": datetime.utcnow().isoformat(),
-                           "sys_model_training_time":
-                               score_service_instance.service_meta["model_train_end_timestamp"].isoformat()
-                           }
-        response_object["sys_meta"] = sys_meta_object
+        response_object["sys_meta"] = _get_sys_meta(request_time)
 
     response_json = json.dumps(response_object)
 
@@ -88,7 +104,7 @@ def score(request):
 
 @csrf_exempt
 def score_bulk(request):
-    start_time = datetime.utcnow()
+    request_time = datetime.utcnow().isoformat()
 
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
@@ -98,7 +114,7 @@ def score_bulk(request):
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)
 
-    logging.info("POST on score_bulk(), body:\n%s" % request_json)
+    logging.debug("POST on score_bulk(), body:\n%s" % request_json)
 
     try:
         doc_ids = request_json["docs"].keys()
@@ -112,20 +128,19 @@ def score_bulk(request):
     except KeyError:
         sys_meta = False
 
-    doc_scores = score_service_instance.score_docs_bulk(doc_ids, doc_titles, doc_contents)
+    try:
+        doc_scores = score_service_instance.score_docs_bulk(doc_ids, doc_titles, doc_contents)
+    except Exception as e:
+        logging.error("POST: Scoring docs %s terminated the service with %s" % (doc_ids, e))
+        raise
+
     scores_categories = doc_scores.columns.values
     scores_object = _object_from_scores(doc_scores, scores_categories)
 
     response_object = {"scoring": scores_object}
 
     if sys_meta:
-        sys_meta_object = {"response_status": "OK",
-                           "request_time": start_time.isoformat(),
-                           "response_time": datetime.utcnow().isoformat(),
-                           "sys_model_training_time":
-                               score_service_instance.service_meta["model_train_end_timestamp"].isoformat()
-                           }
-        response_object["sys_meta"] = sys_meta_object
+        response_object["sys_meta"] = _get_sys_meta(request_time)
 
     response_json = json.dumps(response_object)
 

@@ -123,3 +123,7 @@ def preprocess_text(text, stemming=True):
         tokenized_text += syntactic_units[0].token
 
     return tokenized_text
+
+
+def no_preprocess(text, stemming=True):
+    return text

@@ -11,15 +11,17 @@ class SearchiskoDownloader:
     url = 'http://dcp2.jboss.org/v2/rest/search'
     project_name = None
     stemming = True
+    preprocessor = None
 
     sep = ","
 
     gathered_attributes = ["sys_title", "sys_description", "sys_content_plaintext", "source"]
 
-    def __init__(self, project, csv_sep=",", drop_stemming=True):
+    def __init__(self, project, csv_sep=",", drop_stemming=True, preprocessor=(lambda x: x)):
         self.project_name = project
         self.sep = csv_sep
         self.stemming = drop_stemming
+        self.preprocessor = preprocessor
 
     # http://stackoverflow.com/questions/20078816/replace-non-ascii-characters-with-a-single-space
     @staticmethod
@@ -36,10 +38,9 @@ class SearchiskoDownloader:
                 if att in e_source.keys():
                     # do not preprocess source identification
                     if att == "source":
-                        line += '"%s"%s' % (e_source[att], self.sep)
+                        line += '"%s"%s' % (self.preprocessor(e_source[att]), self.sep)
                     else:
-                        processed_text_unit = preprocess_text(e_source[att], stemming=self.stemming)
-                        processed_text = self.replace_non_ascii(processed_text_unit)
+                        processed_text = self.preprocessor(e_source[att])
                         line += '"%s"%s' % (processed_text, self.sep)
                 else:
                     line += '""%s' % self.sep

@@ -1,4 +1,4 @@
-from search_service import RelevanceSearchService
+from search_service import ScoringService
 from dependencies.doc2vec_wrapper import D2VWrapper
 from dependencies import parsing_utils as parsing
 
@@ -45,7 +45,7 @@ logging.info("Gathering training content scores in %s splits" % splits)
 docs_scores = pd.DataFrame(columns=content_categories+["y"])
 
 for train_doc_indices, test_doc_indices in strat_kfold.split(docs_df, docs_df["y"]):
-    service = RelevanceSearchService()
+    service = ScoringService()
 
     train_docs_df = docs_df.iloc[train_doc_indices]
     test_docs_df = docs_df.iloc[test_doc_indices]

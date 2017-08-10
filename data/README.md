@@ -15,7 +15,7 @@ bound to products, and **StackOverflow questions** from dcp with tags related to
 The downloaded sources might contain duplicates. Those are filtered during the training phase 
 of the service.
 
-The download process of all indexed content (appx. 50k documents) might take around **2 hours**.
+The download process of all indexed content (appx. 60k documents) might take around **2 hours**.
 
 ### Data format
 
@@ -25,7 +25,7 @@ The naming convention of the files conveys the format necessary for training the
 section: 
 
 Each data file has a name in a form of:
-**\<category\><_suffix>.csv**, e.g. **\"eap_content.csv\"**.
+**\<category\><suffix>.csv**, e.g. **\"eap_content.csv\"**.
 
 The training csv files contains the **documents as rows** with the following attributes (colunms):
 * **sys_title**: Document short header, if available. Used for training if **sys_description** is empty.
@@ -35,5 +35,3 @@ If empty, **sys_title** is used for training instead.
 * **source**: Document source, e.g. stackoverflow. Can be left empty.
 * **target**: Target category, matching the prefix of a file of this document.
 
-The texts of documents are already **preprocessed**, by 
-[``preprocess_text(text, stemming=False)``](https://github.com/searchisko/project-classifier-poc/tree/master/data/text_preprocess.py)

@@ -2,7 +2,7 @@
 The service can be conveniently trained on an arbitrary set of categories' documents that are collected and organized as described below.
 
 In case of scoring the relevance of RH products, all that needs to be done to organize the content in desired format is running a 
-[downloader_automata.py](https://github.com/searchisko/project-classifier-poc/tree/master/data/downloader_automata.py)
+[products_downloader.py](https://github.com/searchisko/project-classifier-poc/tree/master/data/products_downloader.py)
 that will download the content indexed in DCP and access.redhat.com, that is somehow mapped to the RH products.
 
 If you want to train on the fresh content, take a look at 
@@ -16,19 +16,29 @@ to be then used for scoring the new content.
 To train the new instance of the search service, evaluate it and export the trained image, do:
 
 ```python
-from search_service import RelevanceSearchService
-trained_service = RelevanceSearchService()
+from search_service import ScoringService
+trained_service = ScoringService()
 trained_service.train(train_content_dir="downloaded/content/dir")
 
-# check the performance of the trained service, if training with new config, or for the first time
+# if training with new config, or for the first time, evaluate the service performance
+# could be VERY time-consuming
 trained_service.evaluate_performance(eval_content_dir="downloaded/content/dir")
 
-# create an image of the trained
+# create an image of the trained service
 trained_service.persist_trained_model(persist_dir="training/new_image_dir")
 ```
 
-Note that the train and evaluation routine might take several hours on tens of thousands of documents.
-See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/technical_docs) for details.
+You can set the preprocessing method used for train and scored text through the Service classifier:
+```python
+trained_service = ScoringService(preprocessing=my_preproc_method)
+```
+by default, the native ``preprocess_text(text, stemming=False)`` method from 
+[text_preprocess](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/dependencies/text_preprocess.py)
+will be used.
+
+Note that the train and especially evaluation routine might take several hours on tens of thousands of documents.
+See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/technical_docs) 
+for the explained description of the training process.
 
 ### Training on other data sources
 The system can be trained on own set of documents in a specified format, and of arbitrary categories.
@@ -46,14 +56,9 @@ If empty, **sys_title** is used for training instead.
 * **source**: Document source, e.g. stackoverflow. Can be left empty.
 * **target**: Target category, matching the prefix of a file of this document.
 
-The training text of documents is expected to be already preprocessed in csv files in a desired manner. 
-The scored texts, however do not have to be preprocessed - the service will preprocess them before 
-the scoring process using service default [preprocess_text(text)](https://github.com/searchisko/project-classifier-poc/tree/master/data/text_preprocess.py) 
-method. See the method for more info.
+The training csv-s, as well as the scored contents are expected **not preprocessed**. 
+The preprocessing using the given method is performed before the training on training content and
+before the scoring on scored content.
 
-Note that if using your own documents with your own preprocessing, the same preprocessing must be propagated into the service
-so that the words are correctly matched.
-This must be done by passing the preprocess method as argument into ``service.score_doc(preprocess_method=your_method(text))``.
-
-Take a look into some implemented [data retrieval procedure](https://github.com/searchisko/project-classifier-poc/tree/master/data/searchisko_requestor.py)
-to get inspired on how to perform a preprocess for your arbitrary data source.
+You can take a look into some implemented [data retrieval procedure](https://github.com/searchisko/project-classifier-poc/tree/master/data/searchisko_requestor.py)
+to get inspired on how to perform a download for other data sources into the predefined format.

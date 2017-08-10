@@ -8,8 +8,8 @@ It also contains the **score tuning** mechanism enabling the direct use of the d
 by a **search engine** filtering the relevant/irrelevant results by a single fixed threshold and easily
 reaching the optimal performance.
 
-The system will be integrated into RH 
-[content search services](https://developers.redhat.com/resources) using DCP. 
+The system will be integrated into 
+[RH content search services](https://developers.redhat.com/resources) using DCP content indexing tool. 
 
 It might also be further extended to provide a smart **content-based recommender system** for web portals 
 with sufficient amount of training documents (regardless of categorization).
@@ -45,17 +45,16 @@ Response:
 
 2. **[Content downloader](https://github.com/searchisko/project-classifier-poc/tree/master/data)**
 providing tools for convenient bulk download of the indexed content (of **DCP** and **access.redhat**)
-categorized to the Red Hat products.
+categorized towards the Red Hat products.
 
 In addition to that, the project contains the 
 [analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab) 
 that has driven the selection of the classifier and configuration of the system parameters.
 
-The overview and the rough evaluation of the system are presented in slightly 
-[technical](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/overview_presentation_nlp.pdf)
-and 
-[promotional](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/slides/ML_for_RHD.pdf)
-presentations.
+The architecture and the technologies used are briefly introduced in
+[overview presentation](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/slides/ML_for_RHD.pdf)
+and slightly 
+[technical presentation](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/slides/overview_presentation_nlp.pdf).
 
 If you're interested in **technical background of the project**, try to understand the 
 **[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/technical_docs)**

@@ -1,6 +1,6 @@
-## System technical
+# System technical
 
-### Architecture overview
+## Architecture overview
 The service relies on four main modules (with dependencies on the listed ones sorted bottom-up):
 1. **Parsing utils**: providing the content selection logic, as well as preprocessing
 of the provided resources. Further provides content de-duplication and casting to the data 
@@ -26,7 +26,10 @@ The module aims to **maximize** the objective **success metric** of the system s
 performance of the **search engine** using the service is reached when **separating** relevant/irrelevant
 content on **predefined score** threshold: **0.5**. More in Score Tuner section below.
 
-### Training process explained
+## Training process explained
+See [training](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/training)
+section for practical notes.
+
 Providing the directory path of the training content as argument when running **``service.train(directory)``**
 will trigger the scan of the directory, expecting the found files to contain the distinct categories,
 with categories names as prefixes of these files. See [data](https://github.com/searchisko/project-classifier-poc/tree/master/)
@@ -35,10 +38,10 @@ section for expected input format in detail.
 After the list of resources is known,
 the resources are loaded and training content is parsed to ``CategorizedDocuments``.
 
-Note that by default the training data set in expected to be preprocessed using
-``text_preprocess.preprocess_text(text)``. In other case, preprocessing method **must
-be matched** on scoring phase, by passing the preprocessing procedure to
-``score_docs(preprocess_method=method)`` or ``score_docs_bulk(preprocess_method=method)``.
+Note that to make sure to match the format of the texts, the training data set are expected 
+**not to be preprocessed** and are preprocessed at the beginning of the training, either by using the default
+``text_preprocess.preprocess_text(text)`` method, or using a method set when initializing the service:
+``service = ScoringService(preprocessing=my_preproc_method)``.
 
 The ``CategorizedDocuments`` are by Doc2Vec Wrapper used for building word vocabulary 
 and subsequent training documents vector inference. The base doc2vec model is cyclically trained 
@@ -69,7 +72,7 @@ the scores of all training content to train the Score tuner on it
 ([service](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service/dependencies/scores_tuner.py)
 's ``_score_train_content()`` method)
 
-#### Score Tuner
+### Score Tuner
 [Score Tuner](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service/dependencies/scores_tuner.py)
 has the aim to learn to transform the scoring of documents so that when separating 
 relevant/irrelevant documents on the fixed threshold, (in Score Tuner so called **``general_search_threshold=0.5``**),
@@ -114,11 +117,11 @@ None category included and excluded in training in
 [lab section](https://github.com/searchisko/project-classifier-poc/blob/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb)  
 for that.
 
-##### Experimental: ``tune_betas_by_none()``
+#### Experimental: ``tune_betas_by_none()``
 
 There is a heuristic for a fine tuning of the betas that treats the beta bounds of ``target_beta_scaling`` 
 as free parameters that are the subject of
-the minimization process of the objective function estimating the overall performance of the tuner.
+the **minimization process** of the **objective function** estimating the overall **performance** of the tuner.
 
 The performance function **harmonically** balances the performance of the system on positive and negative
 categories content, minimizing its value when **minimizing the number of the irrelevant** data set with
@@ -139,18 +142,16 @@ and providing additional statistics of training. Once the service is evaluated u
 ``evaluate_performance()``, the results of the evaluation are also available. These metadata are
 held in ``service.service_meta`` class variable.
 
-### New content scoring process
-Once all the **Doc2Vec**'s base model, vector **classifier** and **Score Tuner** are trained,
+## New content scoring process
+Once all the **Doc2Vec**'s base model, vector **classifier** and **Score Tuner** are **trained**,
 the system is able to adequately score the new provided content. For consistency 
 with training process, the service only provides the scoring of the content 
 having both title and body content.
 
 The scoring process follows the steps of training process, only performing
-the predictions instead of modules training.
+the predictions instead of training on each module's level.
 
-First, the provided texts are **preprocessed** using the provided preprocessing method. 
-The **preprocessing** method applied to training content **should match** the preprocessing passed to
-``service.score(preprocess_method=<method>)`` or ``service.score_bulk(preprocess_method=<method>)`` methods.
+First, the provided texts are **preprocessed** using the Service given preprocessing method. 
 
 The preprocessed docs are then **vectorized** using the pre-embedded Doc2Vec model of **Doc2VecWrapper**.
 The vector inference based on the trained model has been proved to be a source of a considerable entropy.
@@ -168,7 +169,7 @@ thresholds for the classified categories during the training phase.
 
 The transformed probabilities are returned as relevance scores for categories of the given documents.
 
-### Evaluation
+## Evaluation
 
 To perform the proper evaluation of the service, the ``evaluate_performance(eval_content_dir, folds=5)``
 method does not use the pre-trained instance of the Service, but rather trains and test the new
@@ -196,7 +197,7 @@ and should be precisely considered.
 one split can take around 3hrs. You might want to avoid running the procedure repeatedly, 
 if the configuration did not change significantly.
 
-### Modules free parameters
+## Modules free parameters
 A list of the configurable parameters of the system and a brief description of its impact to the functionality.
 
 #### Doc2Vec wrapper
@@ -249,7 +250,7 @@ In general, the higher the number of splits, the more accurate the training of t
 classifier is in more splits trained on bigger data set. Practically, however, the change in result is marginal
 and cyclical training of scoring classifier might be timely consuming (appx. 30min for one 5-fold split).
 
-### System performance
+## System performance
 The **training** is a long-running task where exact duration of processes is very dependent on hardware.
 The service automatically scales to as much cores as it finds with the most time-consuming parts.
 The listed times have been measured on 8-core cpu with 16gb RAM.

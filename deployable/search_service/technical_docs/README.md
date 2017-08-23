@@ -104,7 +104,8 @@ or to retrieve **less** in a price of **leaving off** some **important results**
 We have decided to balance this problem based on **categories size**, so that the categories
 with large data set will gain only the content that is almost certainly relevant, and small categories
 might as well get the content that is rather marginally relevant. 
-For that the Score Tuner use log-linear scaling of betas inversely proportional to the categories' size.
+For that the Score Tuner scales the F-score betas for categories log-linearly,
+inversely proportional to the categories' size.
 This in consequence significantly outweights the precision in case of eap, fuse or openshift,
 whereas outweights recall on small categories.
 

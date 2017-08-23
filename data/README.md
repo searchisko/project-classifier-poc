@@ -21,7 +21,7 @@ The download process of all indexed content (appx. 60k documents) might take aro
 
 The downloaded sources are categorized by product names into separate files for each category.
 The naming convention of the files conveys the format necessary for training the service, as described in
-[training](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/training)
+[training](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/training)
 section: 
 
 Each data file has a name in a form of:

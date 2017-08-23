@@ -31,7 +31,7 @@ The approach 2a) has been for it's simplicity and a feature of native scoring me
 into the [deployable service](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service).
 
 ### Scoring analyses
-* See the visualization of transformation of the scores for a selected category 
+* See the visualization of transformation of the scores for a selected category by ScoreTuner module
 [here](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/cat_score_viewer.ipynb)
 
 * See the overall evaluation of the final scoring of the Search Service 

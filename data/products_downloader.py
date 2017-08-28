@@ -8,7 +8,8 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 downloader_instances = [AccessDownloader, SearchiskoDownloader, StackOverflowDownloader]
 
-output_path = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/no_preproc_test/"
+# TODO: fill in absolute path for download content output directory
+output_path = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/prod_no_preproc/"
 
 csv_sep = ","
 
@@ -19,7 +20,7 @@ def replace_non_ascii(str):
 
 
 # used to drop the blank lines in the content that destroy the csv format
-def preprocessing_f(text):
+def drop_spaces(text):
     text_cleared = replace_non_ascii(text).replace('"', "")
     return " ".join(text_cleared.split())
 
@@ -43,7 +44,7 @@ def download(download_dir):
                 logging.info("Using %s downloader" % downloader_class)
 
                 downloader = downloader_class(project=category, csv_sep=csv_sep,
-                                              drop_stemming=True, preprocessor=preprocessing_f)
+                                              drop_stemming=True, preprocessor=drop_spaces)
                 # use .download_and_parse(sample=60) param to limit content for content format testing
                 download_generator = downloader.download_and_parse()
                 for line in download_generator:

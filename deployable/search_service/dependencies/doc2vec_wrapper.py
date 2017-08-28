@@ -25,7 +25,7 @@ import multiprocessing
 
 
 def async_trigger(wrapper, wordlist):
-    return wrapper.infer_content_vector(wordlist)
+    return wrapper.infer_vector(wordlist)
 
 
 class D2VWrapper:
@@ -156,14 +156,13 @@ class D2VWrapper:
         self.base_doc2vec_model = doc2vec.Doc2Vec.load(model_save_dir + "/doc2vec.mod")
 
     def infer_vocab_content_vectors(self, new_inference=False, category=None):
-        if not new_inference:
-            if self.inferred_vectors is not None:
-                logging.info("Returning already inferred doc vectors of %s all_base_vocab_docs" % len(self.inferred_vectors))
-                return self.inferred_vectors
+        if not new_inference and self.inferred_vectors is not None:
+            logging.info("Returning already inferred doc vectors of %s all_base_vocab_docs" % len(self.inferred_vectors))
+            return self.inferred_vectors
 
         logging.info("Vocab vector inference started")
         if category is None:
-            # inference with default aprams config
+            # inference with default prams config
             # TODO: try other inference params on new inference
             self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs)
 
@@ -175,7 +174,7 @@ class D2VWrapper:
             # implement if needed
             return
 
-    def infer_content_vector(self, wordlist, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
+    def infer_vector(self, wordlist, infer_alpha=0.05, infer_subsample=0.05, infer_steps=10):
         return self.base_doc2vec_model.infer_vector(wordlist, infer_alpha, infer_subsample, infer_steps)
 
     def infer_vectors_parallel(self, docs, jobs=multiprocessing.cpu_count()):

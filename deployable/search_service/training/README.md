@@ -60,5 +60,10 @@ The training csv-s, as well as the scored contents are expected **not preprocess
 The preprocessing using the given method is performed before the training on training content and
 before the scoring on scored content.
 
-You can take a look into some implemented [data retrieval procedure](https://github.com/searchisko/project-classifier-poc/tree/master/data/searchisko_requestor.py)
-to get inspired on how to perform a download for other data sources into the predefined format.
+**If planning to download the training content**, you can take a look into some implemented 
+[data retrieval procedure](https://github.com/searchisko/project-classifier-poc/tree/master/data/searchisko_requestor.py)
+to see how to perform a download into the predefined format.
+
+**If parsing the resources from csv-s**, you can follow the 
+[dataset preparation](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/dataset_preparation.ipynb) 
+framework used for parsing the irrelevant data sets.

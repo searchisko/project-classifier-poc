@@ -48,7 +48,7 @@ and subsequent training documents vector inference. The base doc2vec model is cy
 on the shuffled content in multiple epochs. This is documented and has proved to slightly improve the
 following classification performance, thus suggesting to improve the doc2vec model accuracy.
 
-On the service layer, the provided classifier is then fitted using **``classifier.fit(doc_vectors)``**. 
+On the service layer, the provided classifier is then expected to train using **``classifier.fit(doc_vectors)``** method. 
 This classifier is later used for classification of the new (vectorized) documents. 
 The selection of the default classifier
 was the result of comparative analysis based on the accuracy of classification by the classifiers.

@@ -24,7 +24,8 @@ models (currently not the best results):
 
 ... c) using **Support Vector Machines** with linear and radial kernels (performed the best)
 
-... See [demo notebook](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/d2v_superior_classifier_svm_evaled.ipynb)
+... See [linear kernel notebook](https://github.com/searchisko/project-classifier-poc/blob/master/analyses/lab/d2v_superior_classifier_lin_svm_evaled.ipynb)
+or [radial kernel notebook](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/d2v_superior_classifier_svm_evaled.ipynb)
 
 The approach 2a) has been for it's simplicity and a feature of native scoring method 
 (probabilities prediction of Logistic Regression) selected to be followed up and implemented 
@@ -34,7 +35,7 @@ into the [deployable service](https://github.com/searchisko/project-classifier-p
 * See the visualization of transformation of the scores for a selected category by ScoreTuner module
 [here](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab/cat_score_viewer.ipynb)
 
-* See the overall evaluation of the final scoring of the Search Service 
+* See the overall evaluation of the. final scoring of the Search Service 
 on both relevant and irrelevant data sets:
 
 1. Of the service **not including** the **"None"** category in training content: 

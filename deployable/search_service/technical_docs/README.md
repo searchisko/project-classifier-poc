@@ -115,7 +115,7 @@ in  ``score_tuner.beta_for_categories_provider(y_expected)`` method.
 Whether the beta selection is good or bad might suggest perhaps only the analyses of behavior 
 on independent irrelevant data set. See the negative sampling experiments in comparison of 
 None category included and excluded in training in 
-[lab section](https://github.com/searchisko/project-classifier-poc/blob/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb)  
+[lab section](https://github.com/searchisko/project-classifier-poc/blob/master/analyses/lab/score_tuning_analysis_standalone-none_incl.ipynb)
 for that.
 
 #### Experimental: ``tune_betas_by_none()``

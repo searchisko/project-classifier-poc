@@ -15,7 +15,7 @@ generic_error_message = "See https://github.com/searchisko/project-classifier-po
 
 # TODO: set relative path to the trained image here,
 # or set an absolute path to score_service_instance.service_image_dir
-score_service_instance = ScoringService(image_dir="test_service_dir")
+score_service_instance = ScoringService(image_dir="trained_service_prod")
 
 
 def _object_from_scores(doc_scores, scores_categories):
@@ -38,9 +38,9 @@ def _verify_request(request):
 
 def _get_sys_meta(request_time):
     sys_meta_object = {"response_status": "OK",
-                       "request_time": request_time,
-                       "response_time": datetime.utcnow().isoformat(),
-                       "sys_service_meta": score_service_instance.service_meta["model_train_end_timestamp"],
+                       "request_time": str(request_time),
+                       "response_time": str(datetime.utcnow().isoformat()),
+                       "sys_service_meta": str(score_service_instance.service_meta["model_train_end_timestamp"]),
                        "sys_requests_counter": score_service_instance.service_meta["score_requests_counter"],
                        }
     if score_service_instance.service_meta["model_eval_result"] is not None:
@@ -62,7 +62,9 @@ def score(request):
         return HttpResponse(_verify_request(request), status=400)
 
     try:
-        request_json = json.loads(request.read())
+        req_text = request.read()
+        logging.info(req_text)
+        request_json = json.loads(req_text)
     except ValueError:
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)

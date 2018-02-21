@@ -1,6 +1,6 @@
 # https://github.com/RaRe-Technologies/gensim/blob/develop/docs/notebooks/doc2vec-IMDB.ipynb
 # https://groups.google.com/forum/#!msg/word2vec-toolkit/Q49FIrNOQRo/J6KG8mUj45sJ
-import cPickle
+
 import logging
 import random
 from copy import deepcopy
@@ -9,7 +9,6 @@ import pandas as pd
 from gensim.models import doc2vec
 import numpy as np
 from sklearn.externals import joblib
-from sklearn.model_selection import train_test_split
 
 import parsing_utils as parsing
 
@@ -164,7 +163,7 @@ class D2VWrapper:
         if category is None:
             # inference with default prams config
             # TODO: try other inference params on new inference
-            self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs)
+            self.inferred_vectors = self.infer_content_vectors(self.train_content_tagged_docs, training=True)
 
             self.inferred_vectors["y"] = [doc.category_expected for doc in self.train_content_tagged_docs]
 
@@ -190,7 +189,7 @@ class D2VWrapper:
 
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
-    def infer_content_vectors(self, docs, infer_cycles=5):
+    def infer_content_vectors(self, docs, infer_cycles=10, training=False):
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 
@@ -200,10 +199,14 @@ class D2VWrapper:
         # collect the docs vectors in <infer_cycles> inference repetitions and average the results
         doc_vectors = np.zeros((len(docs), self.base_doc2vec_model.vector_size*2, infer_cycles))
         for infer_i in range(infer_cycles):
-            logging.debug("Inferring vectors of %s documents in %s/%s cycle" % (len(docs), infer_i, infer_cycles))
+            if training:
+                logging.info("Inferring vectors of %s documents in %s/%s cycle" % (len(docs), infer_i, infer_cycles))
+
             doc_vectors[:, :self.base_doc2vec_model.vector_size, infer_i] = self._infer_vectors_non_parallel(docs)
             # header vectors inference
-            logging.debug("Inferring vectors of %s headers in %s/%s cycle" % (len(header_docs), infer_i, infer_cycles))
+            if training:
+                logging.info("Inferring vectors of %s headers in %s/%s cycle" % (len(header_docs), infer_i, infer_cycles))
+
             doc_vectors[:, self.base_doc2vec_model.vector_size:, infer_i] = self._infer_vectors_non_parallel(header_docs)
 
         # average the <infer_cycles> inferences

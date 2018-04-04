@@ -10,7 +10,7 @@ If you want to train on the fresh content, take a look at
 for how to gather it.
 
 After the preprocessed content is successfully downloaded to the given directory,
-the search service can be trained on it, and the image of the trained image can be created
+the search service can be trained on it, and the image of the trained service can be created
 to be then used for scoring the new content.
 
 To train the new instance of the search service, evaluate it and export the trained image, do:

@@ -84,11 +84,11 @@ def clean_text_by_sentences(text, stemming):
     Returns a SyntacticUnit list. """
     original_sentences = split_sentences(text)
     if stemming:
-        filtered_sentences = [join_words(sentence) for sentence in gensim_preprocessing.preprocess_documents(original_sentences)]
+        filtered_sentences = [join_words(sentence) for sentence in gensim_preprocessing.preprocess_string(original_sentences)]
     else:
         nostem_filters = [f for f in gensim_preprocessing.DEFAULT_FILTERS if f != gensim_preprocessing.stem_text]
-        filtered_sentences = [join_words(sentence) for sentence in gensim_preprocessing.preprocess_documents(original_sentences,
-            filters=nostem_filters)]
+        filtered_sentences = [join_words(gensim_preprocessing.preprocess_string(sentence, filters=nostem_filters))
+                              for sentence in original_sentences]
 
     return merge_syntactic_units(original_sentences, filtered_sentences)
 
@@ -98,7 +98,7 @@ def clean_text_by_word(text):
     Returns a dict of word -> syntacticUnit. """
     text_without_acronyms = replace_with_separator(text, "", [AB_ACRONYM_LETTERS])
     original_words = list(tokenize(text_without_acronyms, to_lower=True, deacc=True))
-    filtered_words = [join_words(word_list, "") for word_list in gensim_preprocessing.preprocess_documents(original_words)]
+    filtered_words = [join_words(word_list, "") for word_list in gensim_preprocessing.preprocess_string(original_words)]
     if HAS_PATTERN:
         tags = tag(join_words(original_words))  # tag needs the context of the words in the text
     else:

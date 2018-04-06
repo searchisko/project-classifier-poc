@@ -17,7 +17,7 @@ used for a **vectorized document classification**. The default-integrated
 classifier, sklearn's Logistic Regression was selected and its hyper parameters tuned based on the
 analyses in 
 [analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab).
-The classifier can be relatively easily changed in [search_service](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/search_service/API.py)
+The classifier can be relatively easily changed in [search_service](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/search_service.py)
 using ``_get_classifier_instance()``, for any other classifier providing fit(X, y) and predict_probs(X) functionality.
 
 4. **Score tuner**: provides adaptable functionality for **customization** of possibly biased
@@ -27,7 +27,7 @@ performance of the **search engine** using the service is reached when **separat
 content on **predefined score** threshold: **0.5**. More in Score Tuner section below.
 
 ## Training process explained
-See [training](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/training)
+See [training](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/training)
 section for practical notes.
 
 Providing the directory path of the training content as argument when running **``service.train(directory)``**
@@ -62,18 +62,18 @@ Since it's been observed in
 [classifiers performance analyses](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab) 
 that the classifiers tend to weight the categories scoring unequally, 
 the service gathers the scores of training content and analyzes it using 
-[Score Tuner]((https://github.com/searchisko/project-classifier-poc/blob/master/search_service/API/dependencies/scores_tuner.py)) 
+[Score Tuner]((https://github.com/searchisko/project-classifier-poc/blob/master/search_service/dependencies/scores_tuner.py)) 
 module (below) and acts upon the identified bias using Score Tuner's scores tuning mechanism.
 
 The training documents scores are obtained in **Cross-Validation** manner: the provided classifier 
 with consistent configuration is always **trained** on e.g. **4/5** of of the content, 
 able to adequately **score** the remaining **1/5**. Repeating the process, the service gathers
 the scores of all training content to train the Score tuner on it 
-([service](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/API/dependencies/scores_tuner.py)
+([service](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/dependencies/scores_tuner.py)
 's ``_score_train_content()`` method)
 
 ### Score Tuner
-[Score Tuner](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/API/dependencies/scores_tuner.py)
+[Score Tuner](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/dependencies/scores_tuner.py)
 has the aim to learn to transform the scoring of documents so that when separating 
 relevant/irrelevant documents on the fixed threshold, (in Score Tuner so called **``general_search_threshold=0.5``**),
 the **maximum performance** as estimated on the training data set is **approximated**.

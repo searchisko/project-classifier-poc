@@ -16,7 +16,7 @@ with sufficient amount of training documents (regardless of categorization).
 
 The project currently contains two **main components**:
 
-1. **[Deployable search service](https://github.com/searchisko/project-classifier-poc/tree/master)**
+1. **[Deployable search service](https://github.com/searchisko/project-classifier-poc/tree/master/search_service)**
 providing intuitive REST API for scoring an arbitrary content towards the trained categories:
 
 Request:

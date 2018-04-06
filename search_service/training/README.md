@@ -33,7 +33,7 @@ You can set the preprocessing method used for train and scored text through the 
 trained_service = ScoringService(preprocessing=my_preproc_method)
 ```
 by default, the native ``preprocess_text(text, stemming=False)`` method from 
-[text_preprocess](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/dependencies/text_preprocess.py)
+[text_preprocess](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/dependencies/text_preprocess.py)
 will be used.
 
 Note that the train and especially evaluation routine might take several hours on tens of thousands of documents.

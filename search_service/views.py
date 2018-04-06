@@ -63,7 +63,7 @@ def service_root(_):
     Search service is ready to use with model version: <span class='id'>%s</span></br>
     Check out
     <a href='https://github.com/searchisko/project-classifier-poc/tree/master/search_service'>
-    https://github.com/searchisko/project-classifier-poc/tree/master/search_service</a></br>
+    https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API</a></br>
     for REST API documentation.
     """ % display_meta
 

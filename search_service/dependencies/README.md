@@ -17,7 +17,7 @@ used for a **vectorized document classification**. The default-integrated
 classifier, sklearn's Logistic Regression was selected and its hyper parameters tuned based on the
 analyses in 
 [analytical part](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/lab).
-The classifier can be relatively easily changed in [search_service](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/search_service.py)
+The classifier can be relatively easily changed in [search_service](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/search_service/API.py)
 using ``_get_classifier_instance()``, for any other classifier providing fit(X, y) and predict_probs(X) functionality.
 
 4. **Score tuner**: provides adaptable functionality for **customization** of possibly biased

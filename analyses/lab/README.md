@@ -29,7 +29,7 @@ or [radial kernel notebook](https://github.com/searchisko/project-classifier-poc
 
 The approach 2a) has been for it's simplicity and a feature of native scoring method 
 (probabilities prediction of Logistic Regression) selected to be followed up and implemented 
-into the [deployable service](https://github.com/searchisko/project-classifier-poc/blob/master/deployable/search_service).
+into the [deployable service](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/API).
 
 ### Scoring analyses
 * See the visualization of transformation of the scores for a selected category by ScoreTuner module

@@ -52,7 +52,7 @@ class ScoringService:
         self.service_meta["model_persist_timestamp"] = None
 
         self.service_meta["model_train_start_timestamp"] = None
-        # TODO show on root + documentation link: https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service
+        # TODO show on root + documentation link: https://github.com/searchisko/project-classifier-poc/tree/master/search_service
         self.service_meta["model_train_end_timestamp"] = None
         self.service_meta["model_train_src"] = None
 

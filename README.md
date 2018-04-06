@@ -16,7 +16,7 @@ with sufficient amount of training documents (regardless of categorization).
 
 The project currently contains two **main components**:
 
-1. **[Deployable search service](https://github.com/searchisko/project-classifier-poc/tree/master/deployable)**
+1. **[Deployable search service](https://github.com/searchisko/project-classifier-poc/tree/master)**
 providing intuitive REST API for scoring an arbitrary content towards the trained categories:
 
 Request:
@@ -57,7 +57,7 @@ and slightly
 [technical presentation](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/slides/overview_presentation_nlp.pdf).
 
 If you're interested in **technical background of the project**, try to understand the 
-**[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service/technical_docs)**
+**[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/technical_docs)**
 of the system.
 
 Various further evaluation of the current system by some more tricky metrics are summed up in the most

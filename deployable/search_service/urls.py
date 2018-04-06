@@ -1,7 +1,7 @@
 from django.conf.urls import include, url
 from django.contrib import admin
 
-from .views import score, score_bulk
+from .views import score, score_bulk, service_root
 
 urlpatterns = [
     # Examples:
@@ -11,8 +11,8 @@ urlpatterns = [
     # url(r'^admin/', include(admin.site.urls)),
     # url(r'^scoreBulk', score_bulk)
     url(r'^scoreBulk$', score_bulk),
-    url(r'^score$', score)
-
+    url(r'^score$', score),
+    url(r'^', service_root)
 ]
 
 

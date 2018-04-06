@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.externals import joblib
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 
 from dependencies import parsing_utils as parsing
@@ -51,6 +52,7 @@ class ScoringService:
         self.service_meta["model_persist_timestamp"] = None
 
         self.service_meta["model_train_start_timestamp"] = None
+        # TODO show on root + documentation link: https://github.com/searchisko/project-classifier-poc/tree/master/deployable/search_service
         self.service_meta["model_train_end_timestamp"] = None
         self.service_meta["model_train_src"] = None
 
@@ -65,9 +67,11 @@ class ScoringService:
     Provider of the classifier to be used for scores tuning, newly-inferred vectors scoring and service evaluation.
     """
     @staticmethod
-    def get_classifier_instance():
-        return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
-                                  n_jobs=multiprocessing.cpu_count(), max_iter=1000)
+    def get_classifier_instance(y):
+        # return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
+        #                           n_jobs=multiprocessing.cpu_count(), max_iter=1000)
+        weights = ScoreTuner().beta_for_categories_provider(y).to_dict()
+        return SVC(C=0.1, class_weight=weights, probability=True, kernel="linear")
 
     """
     Scores as inferred by a classifier are later used to tune the categories probs
@@ -83,10 +87,10 @@ class ScoringService:
         # though will take longer inference time linearly
         strat_kfold = StratifiedKFold(n_splits=inference_folds, shuffle=True)
         logging.info("Gathering training content scores as infered by a classifier %s in %s splits"
-                     % (str(self.get_classifier_instance().__class__()), inference_folds))
+                     % (str(self.get_classifier_instance(y).__class__()), inference_folds))
 
         for train_doc_indices, test_doc_indices in strat_kfold.split(doc_vectors, y):
-            split_vector_classifier = self.get_classifier_instance()
+            split_vector_classifier = self.get_classifier_instance(y)
             logging.info("Fitting split classifier")
             split_vector_classifier.fit(doc_vectors.iloc[train_doc_indices], y.iloc[train_doc_indices])
             logging.info("Predicting split probs")
@@ -116,7 +120,7 @@ class ScoringService:
     """
     def _train_vector_classifier(self, X, y, classifier=None):
         if classifier is None:
-            classifier = self.get_classifier_instance()
+            classifier = self.get_classifier_instance(y)
         # superior classifier training
         logging.info("Fitting classifier on %s docs vectors" % len(X))
         classifier.fit(X, y)

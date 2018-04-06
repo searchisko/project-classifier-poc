@@ -55,6 +55,22 @@ def _get_sys_meta(request_time):
 
 
 @csrf_exempt
+def service_root(_):
+    display_meta = score_service_instance.service_meta["model_train_start_timestamp"]
+    display_meta = display_meta if display_meta else "Not loaded yet"
+    resp_html = """
+    <b>Up and running!</b></n></br>
+    Search service is ready to use with model version: <span class='id'>%s</span></br>
+    Check out
+    <a href='https://github.com/searchisko/project-classifier-poc/tree/master/search_service'>
+    https://github.com/searchisko/project-classifier-poc/tree/master/search_service</a></br>
+    for REST API documentation.
+    """ % display_meta
+
+    return HttpResponse(resp_html)
+
+
+@csrf_exempt
 def score(request):
     request_time = datetime.utcnow().isoformat()
 
@@ -69,7 +85,7 @@ def score(request):
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)
 
-    logging.debug("POST on score(), body:\n%s" % request_json)
+    # logging.debug("POST on score(), body:\n%s" % request_json)
     try:
         doc_id = request_json["doc"]["id"]
         doc_title = request_json["doc"]["title"]
@@ -116,7 +132,7 @@ def score_bulk(request):
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)
 
-    logging.debug("POST on score_bulk(), body:\n%s" % request_json)
+    # logging.debug("POST on score_bulk(), body:\n%s" % request_json)
 
     try:
         doc_ids = request_json["docs"].keys()

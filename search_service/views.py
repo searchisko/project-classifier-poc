@@ -11,7 +11,8 @@ import logging
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-generic_error_message = "See https://github.com/searchisko/project-classifier-poc README for documentation."
+generic_error_message = "</br>See <a href='https://github.com/searchisko/project-classifier-poc'>" \
+                        "https://github.com/searchisko/project-classifier-poc</a> README for documentation."
 
 # TODO: set relative path to the trained image here,
 # or set an absolute path to score_service_instance.service_image_dir

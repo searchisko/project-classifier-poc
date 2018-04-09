@@ -12,7 +12,7 @@ urlpatterns = [
     # url(r'^scoreBulk', score_bulk)
     url(r'^scoreBulk$', score_bulk),
     url(r'^score$', score),
-    url(r'^', service_root)
+    url(r'^/?$', service_root)
 ]
 
 

@@ -37,7 +37,7 @@ by default, the native ``preprocess_text(text, stemming=False)`` method from
 will be used.
 
 Note that the train and especially evaluation routine might take several hours on tens of thousands of documents.
-See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/technical_docs) 
+See the Service's [technical docs](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/technical_docs) 
 for the explained description of the training process.
 
 ### Training on other data sources

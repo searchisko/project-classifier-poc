@@ -9,13 +9,16 @@ from data.products_downloader import download
 download(download_dir="/abs/path/to/empty/directory")
 ```
 
-This will download the indexed resources from the three linked sources: **access.redhat.com**, **dcp** sources
+This will create a directory and download the indexed resources from the three linked sources: **access.redhat.com**, **dcp** sources
 bound to products, and **StackOverflow questions** from dcp with tags related to the products.
+
+The download folder is then passed as parameter to training.
 
 The downloaded sources might contain duplicates. Those are filtered during the training phase 
 of the service.
 
-The download process of all indexed content (appx. 60k documents) might take around **2 hours**.
+The download process of all indexed content (appx. 60k documents) might take around **2 hours** 
+depending mostly on speed of pre-processing.
 
 ### Data format
 

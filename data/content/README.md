@@ -20,4 +20,4 @@ content from developer.redhat resources, that the service is eventually expected
 You can find the full relevant data set downloaded using the 
 [products_downloader](https://github.com/searchisko/project-classifier-poc/blob/master/data/products_downloader.py)
 zipped in 
-[here](https://drive.google.com/open?id=0B_42L5-Ve7j2d3pTQm5kaUhlM28).
+[here](https://drive.google.com/open?id=0B_42L5-Ve7j2d3pTQm5kaUhlM28) (as on 07-2017).

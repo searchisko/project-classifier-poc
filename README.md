@@ -57,7 +57,7 @@ and slightly
 [technical presentation](https://github.com/searchisko/project-classifier-poc/tree/master/analyses/slides/overview_presentation_nlp.pdf).
 
 If you're interested in **technical background of the project**, try to understand the 
-**[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API/technical_docs)**
+**[technical documentation](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/technical_docs)**
 of the system.
 
 Various further evaluation of the current system by some more tricky metrics are summed up in the most

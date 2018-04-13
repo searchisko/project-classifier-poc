@@ -61,11 +61,10 @@ def service_root(_):
     display_meta = display_meta if display_meta else "Not loaded yet"
     resp_html = """
     <b>Up and running!</b></n></br>
-    Search service is ready to use with model version: <span class='id'>%s</span></br>
-    Check out
-    <a href='https://github.com/searchisko/project-classifier-poc/tree/master/search_service'>
-    https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API</a></br>
-    for REST API documentation.
+    Classification service is ready to use with model version: <span class='id'>%s</span></br>
+    Check out the service
+    <a href='https://github.com/searchisko/project-classifier-poc/tree/master/search_service/API'>
+    REST API documentation</a>.
     """ % display_meta
 
     return HttpResponse(resp_html)

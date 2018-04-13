@@ -13,7 +13,8 @@ After the preprocessed content is successfully downloaded to the given directory
 the search service can be trained on it, and the image of the trained service can be created
 to be then used for scoring the new content.
 
-To train the new instance of the search service, evaluate it and export the trained image, do:
+To train the new instance of the search service, evaluate it and export the trained image, 
+switch to the created **(classifier) conda environment** and using python interpreter run:
 
 ```python
 from search_service import ScoringService
@@ -22,13 +23,14 @@ trained_service.train(train_content_dir="downloaded/content/dir")
 
 # if training with new config, or for the first time, evaluate the service performance
 # could be VERY time-consuming
+# NOT RECOMMENDED to run on standard training
 trained_service.evaluate_performance(eval_content_dir="downloaded/content/dir")
 
-# create an image of the trained service
+# create an image of the trained service in path relative to the service
 trained_service.persist_trained_model(persist_dir="training/new_image_dir")
 ```
 
-You can set the preprocessing method used for train and scored text through the Service classifier:
+You can set the preprocessing method used for training in the Service constructor:
 ```python
 trained_service = ScoringService(preprocessing=my_preproc_method)
 ```

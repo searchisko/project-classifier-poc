@@ -2,15 +2,19 @@
 
 For a convenient collection of the fresh resources for the classified products, the 
 [products_downloader.py](https://github.com/searchisko/project-classifier-poc/tree/master/data/products_downloader.py)
-can be used to bulk-download and properly organize the known resources of RH products:
+can be used to bulk-download and properly organize the known resources of RH products. 
 
-```python
-from data.products_downloader import download
-download(download_dir="/abs/path/to/empty/directory")
+Using the created **(classifier) conda environment**, you can do that by running the following:
+
+```bash
+cd data
+# do not forget the suffix '/'
+python products_downloader.py /abs/path/to/empty/directory/
 ```
 
-This will create a directory and download the indexed resources from the three linked sources: **access.redhat.com**, **dcp** sources
-bound to products, and **StackOverflow questions** from dcp with tags related to the products.
+This will create the last level of directory and download the indexed resources from the three linked sources: 
+**access.redhat.com**, **dcp** sources bound to products, and **StackOverflow questions** 
+from dcp with tags related to the products.
 
 The products that are to be downloaded are listed in 
 [product_list.py](https://github.com/searchisko/project-classifier-poc/tree/master/data/product_list.py)

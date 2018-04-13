@@ -9,7 +9,7 @@ from datetime import datetime
 import json
 import logging
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.DEBUG)
 
 generic_error_message = "</br>See <a href='https://github.com/searchisko/project-classifier-poc'>" \
                         "https://github.com/searchisko/project-classifier-poc</a> README for documentation."
@@ -80,7 +80,7 @@ def score(request):
 
     try:
         req_text = request.read()
-        logging.info(req_text)
+        logging.debug(req_text)
         request_json = json.loads(req_text)
     except ValueError:
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,

@@ -1,17 +1,27 @@
-from data.searchisko_requestor import SearchiskoDownloader
-from data.searchisko_so_requestor import StackOverflowDownloader
-from data.access_redhat_requestor import AccessDownloader
-from data.product_list import product_list
+from searchisko_requestor import SearchiskoDownloader
+from searchisko_so_requestor import StackOverflowDownloader
+from access_redhat_requestor import AccessDownloader
+from product_list import product_list
+
+import sys
+import os
 
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 downloader_instances = [AccessDownloader, SearchiskoDownloader, StackOverflowDownloader]
 
-# TODO: fill in absolute path for download content output directory
-output_path = "/home/michal/Documents/Projects/ml/project-classifier-poc/project-classifier-poc/data/content/prod_no_preproc/"
-
 csv_sep = ","
+
+# TODO: fill in output path from input param
+try:
+    output_path = str(sys.argv[1])
+except IndexError:
+    logging.error("Download path not given. Please run the script as: 'python products_downloader.py /absolute/download/path/' (including suffix '/')")
+    sys.exit(1)
+
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
 
 
 # http://stackoverflow.com/questions/20078816/replace-non-ascii-characters-with-a-single-space

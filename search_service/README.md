@@ -15,11 +15,14 @@ packaging system.
 After that, from the root of the repository, run:
 
 ```commandline
+# update pip to the latest version
+pip install --upgrade pip
 # create virtual env
 conda create --name classifier python=2.7
-# activate env
+# activate a new environment
 source activate classifier
-# pip install -r requirements.txt
+# install requirements to newly-created env
+pip install -r requirements.txt
 ```
 Within this prepared env, you can run the python scripts from the following sections.
 
@@ -66,8 +69,8 @@ however it is not the common use case.
 
 After the service is correctly linked to the trained image in 
 [views.py](https://github.com/searchisko/project-classifier-poc/blob/master/search_service/views.py)
-and we have installed all the dependent libraries using ``pip install -r requirements.txt``,
-we are ready to set up the servlet:
+and we have installed all the dependent libraries in using ``pip install -r requirements.txt``,
+also in the **deployment environment**, we are ready to set up the servlet:
  
 ``./manage.py runserver`` or 
 

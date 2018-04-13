@@ -12,6 +12,10 @@ download(download_dir="/abs/path/to/empty/directory")
 This will create a directory and download the indexed resources from the three linked sources: **access.redhat.com**, **dcp** sources
 bound to products, and **StackOverflow questions** from dcp with tags related to the products.
 
+The products that are to be downloaded are listed in 
+[product_list.py](https://github.com/searchisko/project-classifier-poc/tree/master/data/product_list.py)
+file. Feel free to extend or limit the list here, if the linked sources contain new categories.
+
 The download folder is then passed as parameter to training.
 
 The downloaded sources might contain duplicates. Those are filtered during the training phase 

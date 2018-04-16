@@ -8,7 +8,7 @@ as well as the randomly-sampled **None-category** content of 7500 docs from Stac
 New York Times and Twitter. The resources has removed stopwords and numbers, persisted stemming.
 These resources were used for training the **production service** model.
 
-3. **[/experimental](https://github.com/searchisko/project-classifier-poc/blob/master/data/content/experimental)** 
+3. **[/none_content](https://github.com/searchisko/project-classifier-poc/blob/master/data/content/none_content)** 
 directory with sets of irrelevant documents used for performance evaluation 
 on negative data set (in analyses and when estimating the categories threshold).
 

@@ -28,6 +28,11 @@ of the service.
 The download process of all indexed content (appx. 60k documents) might take around **2 hours** 
 depending mostly on speed of pre-processing.
 
+A dataset of content irrelevant to any category is included in 
+[content/none_category](https://github.com/searchisko/project-classifier-poc/blob/master/data/content/none_content)
+directory. If you wish to include the **None category** in the training, copy a file **None_content.csv**
+into the download dir given to products_downloader.py.
+
 ### Data format
 
 The downloaded sources are categorized by product names into separate files for each category.

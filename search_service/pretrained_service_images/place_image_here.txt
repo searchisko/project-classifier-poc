@@ -1,0 +1,10 @@
+Insert a folder with pre-trained service image into this folder.
+Do not forget to check that the relative link to image folder is given to score_service_instance in views.py
+
+Download image from:
+
+1. Trained on headers exclusively selected from sys_title:
+https://drive.google.com/file/d/1bnN-hjtQxa1zmxGgBpwtr-6g9wIL0d9E/view
+
+2. Trained on sys_description, if present, otherwise on sys_title:
+https://drive.google.com/file/d/0B_42L5-Ve7j2STFodkprVUY0Wms/view

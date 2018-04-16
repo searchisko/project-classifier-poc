@@ -112,3 +112,25 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'basic'
+        },
+    },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['console'],
+        'formatter': 'basic'
+    },
+    'formatters': {
+        'basic': {
+            'format': '%(asctime)s : %(levelname)s : %(message)s'
+        },
+    },
+}

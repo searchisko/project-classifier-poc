@@ -14,8 +14,6 @@ from dependencies import parsing_utils as parsing
 from dependencies.doc2vec_wrapper import D2VWrapper
 from dependencies.scores_tuner import ScoreTuner
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-
 
 class ScoringService:
     model_categories = None
@@ -133,7 +131,7 @@ class ScoringService:
     TODO: set epochs
     :param epochs: number of cycles that the shuffled list of train documents is passed to doc2vec training algorithm
     """
-    def _train_d2v_wrapper(self, epochs=1):
+    def _train_d2v_wrapper(self, epochs=10):
         # train d2v model and infer docs vectors to train the superior classifier
         self.d2v_wrapper.train_model(epochs=epochs)
 
@@ -199,7 +197,7 @@ class ScoringService:
         self.model_categories = training_content_df["target"].unique()
 
         # pre-process the selected columns of input csv in pre-defined format, using the given processing function
-        logging.info("Preprocessing %s documents using %s function" % (len(training_content_df), self.preprocess_method))
+        logging.debug("Preprocessing %s documents using %s function" % (len(training_content_df), self.preprocess_method))
         training_content_df[["sys_title", "sys_description", "sys_content_plaintext"]] = \
             training_content_df[["sys_title", "sys_description", "sys_content_plaintext"]].applymap(self.preprocess_method)
 
@@ -284,7 +282,7 @@ class ScoringService:
     """
 
     def score_docs_bulk(self, doc_ids, doc_headers, doc_contents):
-        logging.info("Requested docs: %s for scoring" % np.array(doc_ids))
+        logging.debug("Requested docs: %s for scoring" % np.array(doc_ids))
 
         doc_ids = pd.Series(doc_ids)
         # check integrity
@@ -296,28 +294,29 @@ class ScoringService:
             try:
                 self.load_trained_model()
             except IOError:
-                raise UserWarning(
-                        "Depended models not found in self.service_image_dir = %s."
-                        "Please train and export the model to the given directory "
-                        "so it can be loaded at first score request" % self.service_image_dir)
+                err_msg = "Depended models not found in self.service_image_dir = %s. " \
+                          "Please train and export the model to the given directory " \
+                          "so it can be loaded at first score request" % self.service_image_dir
+
+                raise UserWarning(err)
 
         # preprocess content
-        logging.info("Docs %s: preprocessing" % np.array(doc_ids))
+        logging.debug("Docs %s: preprocessing" % np.array(doc_ids))
         doc_objects_series = pd.Series(data=parsing.tagged_docs_from_plaintext(doc_contents, doc_headers,
                                                                                pd.Series([None] * len(doc_ids)),
                                                                                preprocess_method=self.preprocess_method))
         # vectorize content
-        logging.info("Docs %s: vectorizing using trained Doc2Vec model" % np.array(doc_ids))
+        logging.debug("Docs %s: vectorizing using trained Doc2Vec model" % np.array(doc_ids))
         new_docs_vectors = self.d2v_wrapper.infer_content_vectors(docs=doc_objects_series)
 
         # classify = predict probabilities for known categories
-        logging.info("Docs %s: classifying using %s classifier" % (np.array(doc_ids), self.classifier_name))
+        logging.debug("Docs %s: classifying using %s classifier" % (np.array(doc_ids), self.classifier_name))
         new_content_probs = self.vector_classifier.predict_proba(X=new_docs_vectors)
         cats_ordered = list(self.vector_classifier.classes_)
         new_content_probs_df = pd.DataFrame(data=new_content_probs, columns=cats_ordered, index=doc_ids)
 
         # tune categories probabilities to relevance scores
-        logging.info("Docs %s: tuning scores" % np.array(doc_ids))
+        logging.debug("Docs %s: tuning scores" % np.array(doc_ids))
         new_content_scores_tuned = self.score_tuner.tune_new_docs_scores(new_content_probs_df)
 
         self.service_meta["score_requests_counter"] += len(doc_ids)

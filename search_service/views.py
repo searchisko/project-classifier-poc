@@ -16,7 +16,7 @@ generic_error_message = "</br>See <a href='https://github.com/searchisko/project
 
 # TODO: set relative path to the trained image here,
 # or set an absolute path to score_service_instance.service_image_dir
-score_service_instance = ScoringService(image_dir="trained_service_prod")
+score_service_instance = ScoringService(image_dir="pretrained_service_images/service_image_prod")
 
 
 def _object_from_scores(doc_scores, scores_categories):
@@ -39,7 +39,7 @@ def _verify_request(request):
 
 def _get_sys_meta(request_time):
     sys_meta_object = {"response_status": "OK",
-                       "request_time": str(request_time),
+                       "request_time": str(request_time.isoformat()),
                        "response_time": str(datetime.utcnow().isoformat()),
                        "sys_service_meta": str(score_service_instance.service_meta["model_train_end_timestamp"]),
                        "sys_requests_counter": score_service_instance.service_meta["score_requests_counter"],
@@ -72,7 +72,7 @@ def service_root(_):
 
 @csrf_exempt
 def score(request):
-    request_time = datetime.utcnow().isoformat()
+    request_time = datetime.utcnow()
 
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
@@ -98,12 +98,10 @@ def score(request):
     except KeyError:
         sys_meta = False
 
-    logging.info("POST: Scoring document %s: header len: %s, content len: %s"
-                 % (doc_id, len(doc_title.split()), len(doc_content.split())))
     try:
         doc_scores = score_service_instance.score_doc(doc_id, doc_title, doc_content)
     except Exception as e:
-        logging.error("POST: Scoring doc %s terminated the service with %s" % (doc_id, e))
+        logging.error("POST on score(): Scoring doc %s terminated the scoring with %s" % (doc_id, e))
         raise
 
     scores_categories = doc_scores.columns.values
@@ -116,13 +114,17 @@ def score(request):
         response_object["sys_meta"] = _get_sys_meta(request_time)
 
     response_json = json.dumps(response_object)
+    response_time = (datetime.utcnow() - request_time).total_seconds()
+
+    logging.info("POST on score(): Scoring: %s, response_time: %s, header_len: %s, content_len: %s"
+                 % (doc_id, response_time, len(doc_title.split()), len(doc_content.split())))
 
     return HttpResponse(str(response_json), content_type="application/json", status=200)
 
 
 @csrf_exempt
 def score_bulk(request):
-    request_time = datetime.utcnow().isoformat()
+    request_time = datetime.utcnow()
 
     if _verify_request(request) is not None:
         return HttpResponse(_verify_request(request), status=400)
@@ -131,8 +133,6 @@ def score_bulk(request):
     except ValueError:
         return HttpResponse("The requested json is in malformed format. Please check. \n" + generic_error_message,
                             status=400)
-
-    # logging.debug("POST on score_bulk(), body:\n%s" % request_json)
 
     try:
         doc_ids = request_json["docs"].keys()
@@ -161,5 +161,12 @@ def score_bulk(request):
         response_object["sys_meta"] = _get_sys_meta(request_time)
 
     response_json = json.dumps(response_object)
+    response_time = (datetime.utcnow() - request_time).total_seconds()
+
+    logging.info("POST on scoreBulk(): Scoring: %s docs, response_time: %s, summed_response_time: %s, "
+                 "header_len: %s, content_len: %s"
+                 % (len(doc_ids), response_time / len(doc_ids), response_time,
+                    sum(map(len, map(lambda s: str(s).split(), doc_titles))) / float(len(doc_ids)),
+                    sum(map(len, map(lambda s: str(s).split(), doc_contents))) / float(len(doc_ids))))
 
     return HttpResponse(str(response_json), content_type="application/json", status=200)

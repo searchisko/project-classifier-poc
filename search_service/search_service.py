@@ -294,11 +294,11 @@ class ScoringService:
             try:
                 self.load_trained_model()
             except IOError:
-                err_msg = "Depended models not found in self.service_image_dir = %s. " \
+                err_msg = "Depended models not found in self.service_image_dir = %s. \n" \
                           "Please train and export the model to the given directory " \
                           "so it can be loaded at first score request" % self.service_image_dir
 
-                raise UserWarning(err)
+                raise UserWarning(err_msg)
 
         # preprocess content
         logging.debug("Docs %s: preprocessing" % np.array(doc_ids))

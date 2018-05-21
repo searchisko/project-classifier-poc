@@ -101,7 +101,7 @@ def score(request):
     try:
         doc_scores = score_service_instance.score_doc(doc_id, doc_title, doc_content)
     except Exception as e:
-        logging.error("POST on score(): Scoring doc %s terminated the scoring with %s" % (doc_id, e))
+        logging.error("POST on score(): Scoring doc %s terminated the scoring with error: \n%s" % (doc_id, e))
         raise
 
     scores_categories = doc_scores.columns.values
@@ -149,7 +149,7 @@ def score_bulk(request):
     try:
         doc_scores = score_service_instance.score_docs_bulk(doc_ids, doc_titles, doc_contents)
     except Exception as e:
-        logging.error("POST: Scoring docs %s terminated the service with %s" % (doc_ids, e))
+        logging.error("POST on scoreBulk(): Scoring docs %s terminated the service with error: \n%s" % (doc_ids, e))
         raise
 
     scores_categories = doc_scores.columns.values

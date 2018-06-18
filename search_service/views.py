@@ -16,7 +16,7 @@ generic_error_message = "</br>See <a href='https://github.com/searchisko/project
 
 # TODO: set relative path to the trained image here,
 # or set an absolute path to score_service_instance.service_image_dir
-score_service_instance = ScoringService(image_dir="pretrained_service_images/service_image_prod")
+score_service_instance = ScoringService(image_dir="pretrained_service_images/new_gensim/trained_image_logreg")
 
 
 def _object_from_scores(doc_scores, scores_categories):

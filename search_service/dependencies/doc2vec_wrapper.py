@@ -35,7 +35,7 @@ class D2VWrapper:
     header_docs = None
 
     def __init__(self, content_categories=None, vector_length=300, window=8, train_algo="dbow"):
-        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=1 if train_algo == "dm" else 0, size=vector_length, negative=12,
+        self.base_doc2vec_model = doc2vec.Doc2Vec(dm=1 if train_algo == "dm" else 0, vector_size=vector_length, negative=12,
                                                   hs=0, min_count=5, workers=multiprocessing.cpu_count(),
                                                   alpha=0.1, window=window)
 
@@ -100,29 +100,23 @@ class D2VWrapper:
         # after this step, vector for any list of words is inferable - though the docs vectors needs to be embedded in
         # train_model() all_base_vocab_docs vectors should be retrieved first after the training
 
-    def train_model(self, shuffle=True, epochs=10):
+    def train_model(self, epochs=10):
+        # from upgrade to gensim 3.4.0, iterative training over corpus implemented in gensim's train:
+        self.base_doc2vec_model.iter = epochs
         # now training on headers as well
 
         if self.train_content_tagged_docs is None:
             logging.error("D2V vocabulary not initialized. Training must follow the init_model_vocab()")
             return
-        for epoch in range(epochs):
-            logging.info("Training D2V model %s" % self.base_doc2vec_model)
-            logging.info("Epoch %s convergence descent alpha: %s" % (epoch, self.base_doc2vec_model.alpha))
+        logging.info("Training on %s epochs, alpha: %s" % (epochs, self.base_doc2vec_model.alpha))
 
-            # shuffle support
-            train_ordered_tagged_docs = deepcopy(self.train_content_tagged_docs.values)
-            train_ordered_headers = deepcopy(self.header_docs.values)
-            if shuffle and epoch > 0:
-                # shuffling is time-consuming and is not necessary in the first epoch (current order not seen before)
-                random.shuffle(train_ordered_tagged_docs)
-                random.shuffle(train_ordered_headers)
-            else:
-                train_ordered_tagged_docs = self.train_content_tagged_docs
-            # self.base_doc2vec_model.infer_vector(self.base_doc2vec_model.vocab.keys()[:50][0:10])
+        # shuffle support
+        train_ordered_tagged_docs = deepcopy(self.train_content_tagged_docs.values)
+        train_ordered_headers = deepcopy(self.header_docs.values)
 
-            self.base_doc2vec_model.train(pd.Series(train_ordered_tagged_docs).append(pd.Series(train_ordered_headers)))
-            # self.base_doc2vec_model.train(train_ordered_headers)
+        self.base_doc2vec_model.train(pd.Series(train_ordered_tagged_docs).append(pd.Series(train_ordered_headers)),
+                                      total_examples=self.base_doc2vec_model.corpus_count,
+                                      epochs=self.base_doc2vec_model.iter)
 
     def persist_trained_wrapper(self, model_save_dir, model_only=False):
         # if persisting folder does not exist, create it - Service layer will take care of it

@@ -14,6 +14,8 @@ from dependencies import parsing_utils as parsing
 from dependencies.doc2vec_wrapper import D2VWrapper
 from dependencies.scores_tuner import ScoreTuner
 
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
 
 class ScoringService:
     model_categories = None
@@ -50,7 +52,6 @@ class ScoringService:
         self.service_meta["model_persist_timestamp"] = None
 
         self.service_meta["model_train_start_timestamp"] = None
-        # TODO show on root + documentation link: https://github.com/searchisko/project-classifier-poc/tree/master/search_service
         self.service_meta["model_train_end_timestamp"] = None
         self.service_meta["model_train_src"] = None
 
@@ -65,11 +66,12 @@ class ScoringService:
     Provider of the classifier to be used for scores tuning, newly-inferred vectors scoring and service evaluation.
     """
     @staticmethod
-    def get_classifier_instance(y):
-        # return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
-        #                           n_jobs=multiprocessing.cpu_count(), max_iter=1000)
-        weights = ScoreTuner().beta_for_categories_provider(y).to_dict()
-        return SVC(C=0.1, class_weight=weights, probability=True, kernel="linear")
+    def get_classifier_instance(y=None):
+        # weights = ScoreTuner().beta_for_categories_provider(y).to_dict()
+        # return SVC(C=0.1, class_weight=weights, probability=True, kernel="linear")
+
+        return LogisticRegression(C=0.22, solver="sag", multi_class='ovr',
+                                  n_jobs=multiprocessing.cpu_count(), max_iter=1000)
 
     """
     Scores as inferred by a classifier are later used to tune the categories probs

@@ -21,11 +21,10 @@ def sentence_split(document):
 def token_split(sentence):
     return filter(lambda token: len(token) > 0, sentence.split(" "))
 
-training_attributes = ["sys_content_plaintext", "sys_description", "sys_title"]
-
 
 def select_headers(df):
-    selected_text_series = df.apply(lambda content: content[1] if content[1] else content[0] if content[0] else "", axis=1)\
+    selected_text_series = df.apply(lambda content: content["sys_description"] if content["sys_description"]
+                                    else content["sys_title"] if content["sys_title"] else "", axis=1)\
                              .apply(lambda doc_text: doc_text.replace(".", " . "))\
                              .apply(lambda content: token_split(content))
     return selected_text_series
@@ -41,10 +40,10 @@ def select_training_content(df, make_document_mapping=False, sent_split=True):
     selected_content_container = []
     if sent_split:
         # considers optionally sys_content_plaintext if filled, or sys_description if not
-        selected_text_series = df.apply(lambda content: sentence_split(content[training_attributes[0]])
-                                        if content[training_attributes[0]] else
-                                        sentence_split(content[training_attributes[1]]) if content[training_attributes[1]]
-                                        else [content[training_attributes[2]]],
+        selected_text_series = df.apply(lambda content: sentence_split(content["sys_content_plaintext"])
+                                        if content["sys_content_plaintext"] else
+                                        sentence_split(content["sys_description"]) if content["sys_description"]
+                                        else [content["sys_title"]],
                                         axis=1)
         for sentences in selected_text_series:
             # selected_content_container = np.append(selected_content_container, sentences)
@@ -56,10 +55,10 @@ def select_training_content(df, make_document_mapping=False, sent_split=True):
         selected_content_container = pd.Series(selected_content_container)
 
     else:
-        selected_content_container = df.apply(lambda content: content[training_attributes[0]]
-                                              if content[training_attributes[0]] else
-                                              content[training_attributes[1]] if content[training_attributes[1]]
-                                              else content[training_attributes[2]],
+        selected_content_container = df.apply(lambda content: content["sys_content_plaintext"]
+                                              if content["sys_content_plaintext"] else
+                                              content["sys_description"] if content["sys_description"]
+                                              else content["sys_title"],
                                               axis=1)
 
     # treat dots as separate words, as used in demonstration

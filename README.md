@@ -121,15 +121,8 @@ make the according modification in Django's
 
 #### Pre-trained image
 
-The pre-trained version of image (created 25.7.2017) is available
+The pre-trained version of image (created 14.6.2018) is available 
 [here](https://drive.google.com/file/d/0B_42L5-Ve7j2STFodkprVUY0Wms/view).
 
-This image is trained on apx. 50 000 documents, from [/data/content/prod](https://github.com/searchisko/project-classifier-poc/tree/master/data/content/prod) folder.
-in addition to the relevant (products') documents, it contains a "None" category 
-of 7500 non-relevant documents from StackOverflow, New York Times articles, and Political tweets.
-
-The service image contains the models of scoring tuner, Gensim's doc2vec models, and sklearn's classifier. 
-These modules can be potentially independently trained and seamlessly changed in the image directory, 
-however it is not the common use case.
-
-
+See a readme of [pretrained images](https://github.com/searchisko/project-classifier-poc/tree/master/search_service/pretrained_service_images)
+for a description and other pretrained images of older gensim versions.

@@ -23,8 +23,7 @@ def token_split(sentence):
 
 
 def select_headers(df):
-    selected_text_series = df.apply(lambda content: content["sys_description"] if content["sys_description"]
-                                    else content["sys_title"] if content["sys_title"] else "", axis=1)\
+    selected_text_series = df.apply(lambda content: content["sys_title"] if content["sys_title"] else "", axis=1)\
                              .apply(lambda doc_text: doc_text.replace(".", " . "))\
                              .apply(lambda content: token_split(content))
     return selected_text_series

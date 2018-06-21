@@ -349,9 +349,7 @@ class ScoringService:
         logging.info("EVAL: Parsing %s training documents" % len(all_content_df))
 
         doc_content = all_content_df["sys_content_plaintext"]
-        doc_headers = parsing.select_headers(all_content_df).apply(
-            lambda content: "" if np.any(pd.isnull(content)) else content) \
-            .apply(lambda word_list: parsing.content_from_words(word_list))
+        doc_headers = parsing.select_headers(all_content_df).apply(lambda word_list: parsing.content_from_words(word_list))
 
         doc_content.index = doc_headers.index
         y = all_content_df["target"]

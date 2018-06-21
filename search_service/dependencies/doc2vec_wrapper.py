@@ -184,7 +184,7 @@ class D2VWrapper:
     # gets a pd.Series of CategorizedDocument-s with unfilled categories
     # returns a vectors matrix for a content of the input CategorizedDpcument-s in the same order
     # TODO: set cycles
-    def infer_content_vectors(self, docs, infer_cycles=1, training=False):
+    def infer_content_vectors(self, docs, infer_cycles=5, training=False):
         # that might probably be tested on already classified data
         header_docs = parsing.parse_header_docs(docs)
 

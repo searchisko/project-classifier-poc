@@ -1,3 +1,6 @@
+Insert a folder with pre-trained service image into this folder.
+Do not forget to check that the relative link to image folder is given to score_service_instance in views.py
+
 ## Pretrained services
 
 These images are all trained on apx. 50 000 documents, from [/data/content/prod](https://github.com/searchisko/project-classifier-poc/tree/master/data/content/prod) folder.

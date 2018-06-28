@@ -14,8 +14,6 @@ from dependencies import parsing_utils as parsing
 from dependencies.doc2vec_wrapper import D2VWrapper
 from dependencies.scores_tuner import ScoreTuner
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-
 
 class ScoringService:
     model_categories = None
